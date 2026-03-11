@@ -49,7 +49,7 @@ const features = [
 
 const steps = [
   { n: "1", title: "Tech completes the job",         desc: "Your technician opens Job Tracker Pro on their phone, fills in customer info, checks off the job checklist, snaps a few photos." },
-  { n: "2", title: 'Tap "Complete &amp; Send Report"',   desc: "Job Tracker Pro instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
+  { n: "2", title: 'Tap "Complete & Send Report"',   desc: "Job Tracker Pro instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
   { n: "3", title: "Customer receives their report", desc: "The PDF arrives in the customer's email within seconds — professional, branded, and complete." },
 ];
 
@@ -83,10 +83,9 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="relative overflow-hidden bg-linear-to-br from-brand-950 via-brand-900 to-brand-800 px-4 py-20 sm:py-28">
           <div className="relative mx-auto max-w-4xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900/60 px-4 py-1.5 text-sm font-medium text-brand-200">
-              <span className="h-2 w-2 rounded-full bg-success-700" />
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-accent-400">
               Built for Tampa Bay Service Businesses
-            </div>
+            </p>
             <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
               Stop Losing Customers<br />
               <span className="text-accent-500">to Sloppy Paper Forms</span>
@@ -103,7 +102,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link href="#how-it-works">
-                <Button size="lg" variant="outline" className="border-brand-600 text-brand-100 hover:bg-brand-800">
+                <Button size="lg" variant="outline" className="bg-transparent border-white/60 text-white hover:bg-white/25 hover:border-white/90">
                   See How It Works
                 </Button>
               </Link>
@@ -188,7 +187,7 @@ export default function LandingPage() {
                   </Button>
                 </Link>
                 <Link href="/pricing">
-                  <Button variant="outline" className="border-brand-600 text-brand-100 hover:bg-brand-800">View Pricing</Button>
+                  <Button variant="outline" className="bg-transparent border-white/60 text-white hover:bg-white/25 hover:border-white/90">View Pricing</Button>
                 </Link>
               </div>
             </div>

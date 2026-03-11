@@ -36,7 +36,6 @@ export default async function BillingPage({
     <BillingPageClient
       business={business}
       jobsThisMonth={jobsThisMonth}
-      upgradeTarget={params.upgrade ?? null}
       checkoutSuccess={!!params.success}
       checkoutCanceled={!!params.canceled}
     />

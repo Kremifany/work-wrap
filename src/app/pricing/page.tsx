@@ -95,8 +95,8 @@ export default function PricingPage() {
       <header className="border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link href="/" className="flex items-center gap-1">
-            <span className="text-xl font-bold text-brand-800">Field</span>
-            <span className="text-xl font-bold text-accent-700">Proof</span>
+            <span className="text-xl font-bold text-brand-800">Job Tracker</span>
+            <span className="text-xl font-bold text-accent-700">Pro</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login"><Button variant="ghost" size="sm">Sign in</Button></Link>
@@ -114,10 +114,9 @@ export default function PricingPage() {
           Start free. Upgrade when your business grows. No surprise fees.
           Cancel anytime.
         </p>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-success-100 px-4 py-1.5 text-sm font-medium text-success-700">
-          <Zap className="h-4 w-4" />
-          Free plan available — no credit card required
-        </div>
+        <p className="mt-4 text-xs font-bold uppercase tracking-widest text-success-700">
+          Free plan available &mdash; no credit card required
+        </p>
       </section>
 
       {/* Plans */}

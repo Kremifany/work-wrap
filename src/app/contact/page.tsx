@@ -29,7 +29,7 @@ export default function ContactPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("loading");
     setErrorMsg("");
@@ -189,7 +189,7 @@ export default function ContactPage() {
                   <div>
                     <label className="form-label">Subject *</label>
                     <select
-                      className="input"
+                      className="fp-input"
                       value={form.subject}
                       onChange={(e) => update("subject", e.target.value)}
                       required

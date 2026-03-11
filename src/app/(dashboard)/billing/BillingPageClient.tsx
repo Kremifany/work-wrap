@@ -8,7 +8,6 @@ import type { Business, PlanType } from "@/types";
 interface BillingPageClientProps {
   business: Business;
   jobsThisMonth: number;
-  upgradeTarget: string | null;
   checkoutSuccess: boolean;
   checkoutCanceled: boolean;
 }
@@ -70,7 +69,6 @@ const PLANS: PlanConfig[] = [
 export default function BillingPageClient({
   business,
   jobsThisMonth,
-  upgradeTarget: _upgradeTarget,
   checkoutSuccess,
   checkoutCanceled,
 }: BillingPageClientProps) {

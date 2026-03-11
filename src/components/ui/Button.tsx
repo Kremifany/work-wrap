@@ -26,7 +26,7 @@ export function Button({
     secondary:
       "bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400",
     outline:
-      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-400",
+      "border border-slate-400 bg-transparent text-slate-700 hover:bg-slate-100 hover:border-slate-600 focus-visible:ring-slate-400",
     danger:
       "bg-error-700 text-white hover:bg-red-600 focus-visible:ring-red-700 shadow-sm",
     ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400",
