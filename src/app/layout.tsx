@@ -24,6 +24,16 @@ export const metadata: Metadata = {
     "work order completion app Clearwater",
     "technician report software Hillsborough County",
     "Pinellas County HVAC service reports",
+    "field service management app Florida",
+    "service technician app Tampa Bay",
+    "work order software small business Florida",
+    "contractor job tracking app Tampa",
+    "digital service report app HVAC",
+    "garage door technician report app",
+    "plumber job report software",
+    "electrical contractor report app Florida",
+    "job tracker app for service businesses",
+    "free field service app Florida",
   ],
   openGraph: {
     type:        "website",
@@ -44,6 +54,41 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // LocalBusiness schema — signals physical market focus to Google
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type":    "ProfessionalService",
+    name:       "Job Tracker Pro",
+    description: "Job completion report software and field service app for Tampa Bay HVAC, garage door, plumbing, and electrical businesses.",
+    url:        APP_URL,
+    address: {
+      "@type":           "PostalAddress",
+      addressLocality:   "Tampa",
+      addressRegion:     "FL",
+      addressCountry:    "US",
+    },
+    geo: {
+      "@type":    "GeoCoordinates",
+      latitude:   27.9506,
+      longitude:  -82.4572,
+    },
+    areaServed: [
+      { "@type": "City",   name: "Tampa",              addressRegion: "FL" },
+      { "@type": "City",   name: "St. Petersburg",     addressRegion: "FL" },
+      { "@type": "City",   name: "Clearwater",         addressRegion: "FL" },
+      { "@type": "City",   name: "Bradenton",          addressRegion: "FL" },
+      { "@type": "City",   name: "Sarasota",           addressRegion: "FL" },
+      { "@type": "City",   name: "Wesley Chapel",      addressRegion: "FL" },
+      { "@type": "City",   name: "Lakeland",           addressRegion: "FL" },
+      { "@type": "County", name: "Hillsborough County",addressRegion: "FL" },
+      { "@type": "County", name: "Pinellas County",    addressRegion: "FL" },
+      { "@type": "County", name: "Manatee County",     addressRegion: "FL" },
+      { "@type": "State",  name: "Florida",            addressRegion: "FL" },
+    ],
+    priceRange: "$-$$$",
+    sameAs: [ "https://cliplogicpro.com" ],
+  };
+
   // SoftwareApplication schema — price range (no hardcoded single price per SEO best practice)
   const softwareSchema = {
     "@context": "https://schema.org",
@@ -112,7 +157,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify([softwareSchema, orgSchema, websiteSchema]) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify([softwareSchema, orgSchema, websiteSchema, localBusinessSchema]) }}
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

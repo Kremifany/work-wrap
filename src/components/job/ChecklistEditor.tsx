@@ -9,7 +9,7 @@ interface ChecklistEditorProps {
   onChange: (items: ChecklistItem[]) => void;
 }
 
-// eslint-disable-next-line react-compiler/react-compiler
+
 export default function ChecklistEditor({ items, onChange }: ChecklistEditorProps) {
   const [newItem, setNewItem] = useState("");
 
