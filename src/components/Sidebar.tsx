@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -63,10 +63,12 @@ export default function Sidebar({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [, startClose] = useTransition();
 
   // Close drawer on navigation
   useEffect(() => {
-    setOpen(false);
+    startClose(() => setOpen(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Close on Escape key
@@ -99,10 +101,10 @@ export default function Sidebar({
       <div className="px-6 py-5 border-b border-brand-700/50">
         <Link href="/dashboard" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow">
-            FP
+            JT
           </div>
           <span className="font-semibold text-lg tracking-tight text-white group-hover:text-accent-200 transition-colors">
-            FieldProof
+            Job Tracker Pro
           </span>
         </Link>
       </div>
@@ -182,9 +184,9 @@ export default function Sidebar({
         </button>
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-accent-500 flex items-center justify-center text-white font-bold text-xs">
-            FP
+            JT
           </div>
-          <span className="font-semibold text-base text-white">FieldProof</span>
+          <span className="font-semibold text-base text-white">Job Tracker Pro</span>
         </Link>
       </div>
 

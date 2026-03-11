@@ -18,8 +18,8 @@ function MarketingNav() {
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-1">
-          <span className="text-xl font-bold text-brand-800">Field</span>
-          <span className="text-xl font-bold text-accent-700">Proof</span>
+          <span className="text-xl font-bold text-brand-800">Job Tracker</span>
+          <span className="text-xl font-bold text-accent-700">Pro</span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 sm:flex">
           <Link href="/pricing"      className="hover:text-brand-800">Pricing</Link>
@@ -48,16 +48,16 @@ const features = [
 ];
 
 const steps = [
-  { n: "1", title: "Tech completes the job",         desc: "Your technician opens FieldProof on their phone, fills in customer info, checks off the job checklist, snaps a few photos." },
-  { n: "2", title: 'Tap "Complete & Send Report"',   desc: "FieldProof instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
+  { n: "1", title: "Tech completes the job",         desc: "Your technician opens Job Tracker Pro on their phone, fills in customer info, checks off the job checklist, snaps a few photos." },
+  { n: "2", title: 'Tap "Complete &amp; Send Report"',   desc: "Job Tracker Pro instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
   { n: "3", title: "Customer receives their report", desc: "The PDF arrives in the customer's email within seconds — professional, branded, and complete." },
 ];
 
 const faqs = [
-  { q: "Do I need to install anything?",           a: "No. FieldProof is 100% web-based. Your techs open a link on their phone — no app store needed." },
-  { q: "Which industries does FieldProof support?",a: "HVAC, garage door, plumbing, electrical, and general service — with built-in checklist templates for each." },
+  { q: "Do I need to install anything?",           a: "No. Job Tracker Pro is 100% web-based. Your techs open a link on their phone — no app store needed." },
+  { q: "Which industries does Job Tracker Pro support?",a: "HVAC, garage door, plumbing, electrical, and general service — with built-in checklist templates for each." },
   { q: "Is it really free?",                        a: "Yes. The Free plan includes 5 jobs per month and 1 technician. Perfect for getting started." },
-  { q: "Do you serve Tampa Bay businesses?",        a: "FieldProof was designed with Tampa Bay, St. Petersburg, and Clearwater service businesses in mind. Your local market, your local needs." },
+  { q: "Do you serve Tampa Bay businesses?",        a: "Job Tracker Pro was designed with Tampa Bay, St. Petersburg, and Clearwater service businesses in mind. Your local market, your local needs." },
 ];
 
 export default function LandingPage() {
@@ -81,7 +81,7 @@ export default function LandingPage() {
         <MarketingNav />
 
         {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 px-4 py-20 sm:py-28">
+        <section className="relative overflow-hidden bg-linear-to-br from-brand-950 via-brand-900 to-brand-800 px-4 py-20 sm:py-28">
           <div className="relative mx-auto max-w-4xl text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900/60 px-4 py-1.5 text-sm font-medium text-brand-200">
               <span className="h-2 w-2 rounded-full bg-success-700" />
@@ -92,7 +92,7 @@ export default function LandingPage() {
               <span className="text-accent-500">to Sloppy Paper Forms</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-brand-200 sm:text-xl">
-              FieldProof lets your HVAC, garage door, and plumbing techs complete a digital
+              Job Tracker Pro lets your HVAC, garage door, and plumbing techs complete a digital
               checklist with photos on their phone — then auto-emails a branded PDF report
               to the customer <strong className="text-white">before they leave the driveway</strong>.
             </p>
@@ -165,7 +165,7 @@ export default function LandingPage() {
         {/* Tampa Bay focus */}
         <section className="px-4 py-20">
           <div className="mx-auto max-w-4xl">
-            <div className="rounded-2xl bg-gradient-to-br from-brand-900 to-brand-800 p-8 text-white sm:p-12">
+            <div className="rounded-2xl bg-linear-to-br from-brand-900 to-brand-800 p-8 text-white sm:p-12">
               <h2 className="text-3xl font-bold leading-tight">
                 Built for Tampa Bay&apos;s Best Service Professionals
               </h2>
@@ -217,7 +217,7 @@ export default function LandingPage() {
         <section className="px-4 py-20 text-center">
           <h2 className="page-title">Ready to Impress Every Customer?</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
-            Join Tampa Bay service businesses already saving time and winning more referrals with FieldProof.
+            Join Tampa Bay service businesses already saving time and winning more referrals with Job Tracker Pro.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link href="/register"><Button size="lg">Create Free Account <ChevronRight className="h-4 w-4" /></Button></Link>
@@ -231,21 +231,23 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
               <div className="col-span-2 sm:col-span-1">
                 <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold text-white">Field</span>
-                  <span className="text-lg font-bold text-accent-500">Proof</span>
+                  <span className="text-lg font-bold text-white">Job Tracker</span>
+                  <span className="text-lg font-bold text-accent-500">Pro</span>
                 </div>
                 <p className="mt-2 text-sm text-slate-400">Job completion reports for Tampa Bay service businesses.</p>
+                <p className="mt-1 text-xs text-slate-500">By <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a></p>
                 <Link href="/contact" className="mt-3 flex items-center gap-2 text-sm text-slate-400 hover:text-white">
                   <Phone className="h-4 w-4" /> Contact Support
                 </Link>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-300">Product</h3>
+                <h3 className="text-sm font-semibold text-slate-300">Company</h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-400">
-                  <li><Link href="/#features"    className="hover:text-white">Features</Link></li>
                   <li><Link href="/pricing"      className="hover:text-white">Pricing</Link></li>
-                  <li><Link href="/#how-it-works" className="hover:text-white">How It Works</Link></li>
+                  <li><Link href="#features"    className="hover:text-white">Features</Link></li>
+                  <li><Link href="#how-it-works" className="hover:text-white">How It Works</Link></li>
                   <li><Link href="/contact"      className="hover:text-white">Contact &amp; Support</Link></li>
+                  <li><a href="https://agency.cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Digital Agency ↗</a></li>
                 </ul>
               </div>
               <div>
@@ -264,7 +266,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs text-slate-500">
-              © {new Date().getFullYear()} FieldProof. Serving Tampa, St. Petersburg, Clearwater, and the greater Tampa Bay area.
+              © {new Date().getFullYear()} Job Tracker Pro by <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clip Logic LLC</a>. Serving Tampa, St. Petersburg, Clearwater, and the greater Tampa Bay area.
             </div>
           </div>
         </footer>

@@ -20,7 +20,7 @@ export function Textarea({ label, error, hint, className, id, ...props }: Textar
       <textarea
         id={inputId}
         className={cn(
-          "fp-input min-h-[100px] resize-y leading-relaxed",
+          "fp-input min-h-25 resize-y leading-relaxed",
           error && "error",
           className
         )}

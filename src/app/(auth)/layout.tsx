@@ -24,7 +24,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </main>
 
       <footer className="py-4 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} FieldProof
+        &copy; {new Date().getFullYear()} Job Tracker Pro by Clip Logic LLC
       </footer>
     </div>
   );

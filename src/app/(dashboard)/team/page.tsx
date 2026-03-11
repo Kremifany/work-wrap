@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import TeamPageClient from "./TeamPageClient";
 import type { Tech } from "@/types";
 
-export const metadata = { title: "Team | FieldProof" };
+export const metadata = { title: "Team | Job Tracker Pro" };
 
 export default async function TeamPage() {
   const session = await requireSession();

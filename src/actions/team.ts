@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
+import { addTechSchema, updateTechSchema } from "@/lib/schemas";
 import type { ActionResult, Tech } from "@/types";
 
 export interface AddTechInput {
@@ -15,6 +16,9 @@ export async function addTechAction(
   input: AddTechInput
 ): Promise<ActionResult<{ techId: string }>> {
   try {
+    const parsed = addTechSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session?.business || session.role !== "owner") {
       return { success: false, error: "Only business owners can manage the team." };
@@ -66,6 +70,9 @@ export async function updateTechAction(
   input: Partial<AddTechInput>
 ): Promise<ActionResult> {
   try {
+    const parsed = updateTechSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session?.business || session.role !== "owner") {
       return { success: false, error: "Access denied." };
@@ -77,7 +84,7 @@ export async function updateTechAction(
     const data = snap.data() as Tech;
     if (data.businessId !== session.business.id) return { success: false, error: "Access denied." };
 
-    await adminDb.collection("techs").doc(techId).update(input);
+    await adminDb.collection("techs").doc(techId).update(parsed.data);
     revalidatePath("/team");
     return { success: true };
   } catch (err) {

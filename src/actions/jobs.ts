@@ -6,6 +6,7 @@ import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
 import { generateJobPDF } from "@/lib/generate-pdf";
 import { sendReportEmail } from "@/lib/send-report-email";
+import { createJobSchema, completeJobUpdatesSchema } from "@/lib/schemas";
 import type { ActionResult, ChecklistItem, Job, JobPhoto, JobType } from "@/types";
 
 // ── Plan-limit check ─────────────────────────────────────────────────────────
@@ -50,6 +51,9 @@ export async function createJobAction(
   input: CreateJobInput
 ): Promise<ActionResult<{ jobId: string }>> {
   try {
+    const parsed = createJobSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session) return { success: false, error: "Not authenticated." };
     if (!session.business) return { success: false, error: "Business profile not found." };
@@ -91,6 +95,9 @@ export async function completeJobAction(
   updates: Partial<Pick<Job, "checklist" | "notes" | "photos">>
 ): Promise<ActionResult<{ pdfUrl: string }>> {
   try {
+    const parsed = completeJobUpdatesSchema.safeParse(updates);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid updates." };
+
     const session = await getSession();
     if (!session || !session.business) return { success: false, error: "Not authenticated." };
 

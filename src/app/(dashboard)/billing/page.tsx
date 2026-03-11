@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import BillingPageClient from "./BillingPageClient";
 import { adminDb } from "@/lib/firebase-admin";
 
-export const metadata = { title: "Billing | FieldProof" };
+export const metadata = { title: "Billing | Job Tracker Pro" };
 
 export default async function BillingPage({
   searchParams,

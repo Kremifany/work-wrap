@@ -291,7 +291,7 @@ export default function JobForm({ session, customers }: JobFormProps) {
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="fp-input min-h-[100px] resize-y"
+          className="fp-input min-h-25 resize-y"
           placeholder="Describe work performed, parts used, issues found…"
           maxLength={5000}
         />

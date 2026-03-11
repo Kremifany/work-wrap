@@ -226,7 +226,7 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
               maxLength={200}
             />
             <p className="text-xs text-neutral-400 mt-1">
-              If this person already has a FieldProof account, they'll be linked
+              If this person already has a Job Tracker Pro account, they&apos;ll be linked
               automatically.
             </p>
           </div>

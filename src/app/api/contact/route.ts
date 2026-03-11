@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
 
   try {
     await resend.emails.send({
-      from:    "FieldProof Support Form <noreply@fieldproof.app>",
+      from:    "Job Tracker Pro Support Form <noreply@jobtrackerproapp.com>",
       to:      ["support@cliplogicpro.com"],
       replyTo: email,
-      subject: `[FieldProof Support] ${safe(subject)}`,
+      subject: `[Job Tracker Pro Support] ${safe(subject)}`,
       html: `
         <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
           <h2 style="color:#1e3a8a;margin-bottom:16px;">New Support Request</h2>
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;"/>
           <p style="color:#334155;line-height:1.6;white-space:pre-wrap;">${safe(message)}</p>
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;"/>
-          <p style="font-size:12px;color:#94a3b8;">Sent from the FieldProof contact form. Reply-To: ${safe(email)}</p>
+          <p style="font-size:12px;color:#94a3b8;">Sent from the Job Tracker Pro contact form. Reply-To: ${safe(email)}</p>
         </div>
       `,
     });

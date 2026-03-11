@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { completeJobAction, resendReportAction, deleteJobAction } from "@/actions/jobs";
-import { Alert, Badge, Spinner, Modal } from "@/components/ui";
+import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
 import {
   CheckCircle2,

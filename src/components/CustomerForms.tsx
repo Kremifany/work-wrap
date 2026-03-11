@@ -246,7 +246,7 @@ function CustomerFields({ customer }: { customer?: Customer }) {
           id="c-notes"
           name="notes"
           defaultValue={customer?.notes ?? ""}
-          className="fp-input min-h-[80px] resize-y"
+          className="fp-input min-h-20 resize-y"
           maxLength={2000}
           placeholder="Preferred contact method, gate code, special instructions…"
         />

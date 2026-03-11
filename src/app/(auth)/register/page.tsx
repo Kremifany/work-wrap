@@ -77,7 +77,7 @@ function RegisterForm() {
     <div className="card-padded">
       <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Get started with FieldProof — free forever, no credit card needed.
+        Get started with Job Tracker Pro — free forever, no credit card needed.
       </p>
 
       {planParam !== "free" && (

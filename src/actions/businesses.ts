@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
+import { upsertBusinessSchema } from "@/lib/schemas";
 import type { ActionResult, Business } from "@/types";
 
 export interface UpsertBusinessInput {
@@ -18,6 +19,9 @@ export async function upsertBusinessProfileAction(
   input: UpsertBusinessInput
 ): Promise<ActionResult<{ businessId: string }>> {
   try {
+    const parsed = upsertBusinessSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session) return { success: false, error: "Not authenticated." };
 

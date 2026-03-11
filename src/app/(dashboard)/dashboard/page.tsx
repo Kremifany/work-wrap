@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import {
   ClipboardList,
   Users,
@@ -11,9 +11,9 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
-import type { Job, Customer, DashboardStats } from "@/types";
+import type { Job, DashboardStats } from "@/types";
 
-export const metadata = { title: "Dashboard | FieldProof" };
+export const metadata = { title: "Dashboard | Job Tracker Pro" };
 
 async function getStats(businessId: string): Promise<DashboardStats> {
   const [jobsSnap, customersSnap] = await Promise.all([

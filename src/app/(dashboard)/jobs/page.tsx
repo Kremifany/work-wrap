@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/utils";
 import { ClipboardList, Plus } from "lucide-react";
 import type { Job } from "@/types";
 
-export const metadata = { title: "Jobs | FieldProof" };
+export const metadata = { title: "Jobs | Job Tracker Pro" };
 
 export default async function JobsPage({
   searchParams,
@@ -22,7 +22,7 @@ export default async function JobsPage({
     return <p className="text-neutral-500">No business profile found.</p>;
   }
 
-  let query = adminDb
+  const query = adminDb
     .collection("jobs")
     .where("businessId", "==", session.business.id)
     .orderBy("createdAt", "desc");

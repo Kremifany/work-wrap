@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import JobForm from "@/components/job/JobForm";
 import type { Customer } from "@/types";
 
-export const metadata = { title: "New Job | FieldProof" };
+export const metadata = { title: "New Job | Job Tracker Pro" };
 
 export default async function NewJobPage() {
   const session = await requireSession();

@@ -59,8 +59,8 @@ export default function ContactPage() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-1">
-            <span className="text-xl font-bold text-brand-800">Field</span>
-            <span className="text-xl font-bold text-accent-700">Proof</span>
+            <span className="text-xl font-bold text-brand-800">Job Tracker</span>
+            <span className="text-xl font-bold text-accent-700">Pro</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 sm:flex">
             <Link href="/pricing"      className="hover:text-brand-800">Pricing</Link>
@@ -112,7 +112,7 @@ export default function ContactPage() {
             </ul>
 
             <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm font-semibold text-slate-700">FieldProof is a product of</p>
+              <p className="text-sm font-semibold text-slate-700">Job Tracker Pro is a product of</p>
               <a
                 href="https://cliplogicpro.com"
                 target="_blank"
@@ -120,6 +120,15 @@ export default function ContactPage() {
                 className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
               >
                 Clip Logic LLC
+                <ChevronRight className="h-3 w-3" />
+              </a>
+              <a
+                href="https://agency.cliplogicpro.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+              >
+                Digital Agency Services
                 <ChevronRight className="h-3 w-3" />
               </a>
               <p className="mt-1 text-xs text-slate-400">Tampa Bay, Florida</p>
@@ -229,7 +238,7 @@ export default function ContactPage() {
           <Link href="/login"   className="hover:text-white">Sign In</Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
-          © {new Date().getFullYear()} FieldProof — a Clip Logic LLC product. Tampa Bay, FL.
+          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a> product. Tampa Bay, FL.
         </p>
       </footer>
     </div>

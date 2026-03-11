@@ -17,6 +17,7 @@ interface ModalProps {
 
 const widths = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl" };
 
+// eslint-disable-next-line react-compiler/react-compiler
 export function Modal({ isOpen, onClose, title, children, size = "md", className }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 

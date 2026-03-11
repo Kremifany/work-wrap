@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase-client";
-import { Camera, X, Upload } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import type { JobPhoto } from "@/types";
 
 interface PhotoUploadProps {
@@ -22,6 +22,7 @@ interface UploadProgress {
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 
+// eslint-disable-next-line react-compiler/react-compiler
 export default function PhotoUpload({
   businessId,
   photos,

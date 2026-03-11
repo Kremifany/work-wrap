@@ -70,7 +70,7 @@ const PLANS: PlanConfig[] = [
 export default function BillingPageClient({
   business,
   jobsThisMonth,
-  upgradeTarget,
+  upgradeTarget: _upgradeTarget,
   checkoutSuccess,
   checkoutCanceled,
 }: BillingPageClientProps) {
@@ -291,7 +291,7 @@ export default function BillingPageClient({
               Can I cancel anytime?
             </summary>
             <p className="mt-2 ml-4">
-              Yes. Cancel any time from the billing portal. You'll retain Pro/Team
+              Yes. Cancel any time from the billing portal. You&apos;ll retain Pro/Team
               access through the end of the current billing period.
             </p>
           </details>

@@ -5,7 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import JobDetailActions from "@/components/job/JobDetailActions";
-import { ArrowLeft, CheckSquare, Square, MapPin, User, Calendar } from "lucide-react";
+import { ArrowLeft, CheckSquare, Square, Calendar } from "lucide-react";
 import type { Job } from "@/types";
 
 export async function generateMetadata({
@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `Job ${id.slice(0, 6)} | FieldProof` };
+  return { title: `Job ${id.slice(0, 6)} | Job Tracker Pro` };
 }
 
 export default async function JobDetailPage({

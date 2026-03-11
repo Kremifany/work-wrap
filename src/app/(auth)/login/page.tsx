@@ -67,7 +67,7 @@ export default function LoginPage() {
     <div className="card-padded">
       <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Sign in to your FieldProof account
+        Sign in to your Job Tracker Pro account
       </p>
 
       {error && (

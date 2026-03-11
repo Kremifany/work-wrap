@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { registerBusinessSchema } from "@/lib/schemas";
 import type { ActionResult, Business } from "@/types";
 import { revalidatePath } from "next/cache";
 
@@ -42,6 +43,9 @@ export async function registerBusinessAction(
   email: string
 ): Promise<ActionResult<{ businessId: string }>> {
   try {
+    const parsed = registerBusinessSchema.safeParse({ uid, ownerName, businessName, email });
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid registration data." };
+
     const now = new Date().toISOString();
     const business: Omit<Business, "id"> = {
       ownerId: uid,

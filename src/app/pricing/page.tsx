@@ -4,16 +4,16 @@ import { CheckCircle, X, ChevronRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Pricing – Plans for Tampa Bay Service Businesses | FieldProof",
+  title: "Pricing – Plans for Tampa Bay Service Businesses | Job Tracker Pro",
   description:
-    "FieldProof plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses across Tampa Bay, FL.",
+    "Job Tracker Pro plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses across Tampa Bay, FL.",
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://fieldproof.app"}/pricing`,
+    canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
   },
   openGraph: {
-    title:       "FieldProof Pricing – Free to $99/month for Tampa Bay Service Businesses",
+    title:       "Job Tracker Pro Pricing – Free to $99/month for Tampa Bay Service Businesses",
     description: "Start free. Upgrade when you grow. Simple, honest pricing for HVAC, garage door, plumbing, and electrical teams across Tampa, St. Pete, and Clearwater.",
-    url:         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://fieldproof.app"}/pricing`,
+    url:         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
     type:        "website",
   },
 };
@@ -208,7 +208,7 @@ export default function PricingPage() {
           <Link href="/login"   className="hover:text-slate-700">Sign In</Link>
         </div>
         <p className="mt-2 text-xs text-slate-400">
-          © {new Date().getFullYear()} FieldProof — a Clip Logic LLC product.
+          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600">Clip Logic LLC</a> product.
         </p>
       </footer>
     </div>

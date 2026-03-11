@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
+import { customerInputSchema, updateCustomerSchema } from "@/lib/schemas";
 import type { ActionResult, Customer } from "@/types";
 
 export interface CustomerInput {
@@ -17,6 +18,9 @@ export async function createCustomerAction(
   input: CustomerInput
 ): Promise<ActionResult<{ customerId: string }>> {
   try {
+    const parsed = customerInputSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
 
@@ -44,6 +48,9 @@ export async function updateCustomerAction(
   input: Partial<CustomerInput>
 ): Promise<ActionResult> {
   try {
+    const parsed = updateCustomerSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
 
@@ -53,7 +60,7 @@ export async function updateCustomerAction(
     const data = snap.data() as Customer;
     if (data.businessId !== session.business.id) return { success: false, error: "Access denied." };
 
-    await adminDb.collection("customers").doc(customerId).update(input);
+    await adminDb.collection("customers").doc(customerId).update(parsed.data);
     revalidatePath("/customers");
     revalidatePath(`/customers/${customerId}`);
     return { success: true };

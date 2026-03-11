@@ -16,7 +16,7 @@ export async function generateMetadata({
   const { id } = await params;
   const snap = await adminDb.collection("customers").doc(id).get();
   const name = snap.data()?.name ?? "Customer";
-  return { title: `${name} | FieldProof` };
+  return { title: `${name} | Job Tracker Pro` };
 }
 
 export default async function CustomerDetailPage({

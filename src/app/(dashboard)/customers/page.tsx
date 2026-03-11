@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/utils";
 import { Users, Plus } from "lucide-react";
 import type { Customer } from "@/types";
 
-export const metadata = { title: "Customers | FieldProof" };
+export const metadata = { title: "Customers | Job Tracker Pro" };
 
 export default async function CustomersPage() {
   const session = await requireSession();
