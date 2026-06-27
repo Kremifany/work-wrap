@@ -29,7 +29,7 @@ export async function sendReportEmail({
   const jobTitle = getJobTitle(job);
   const dateStr = getCompletedDate(job);
   const filename = getReportFilename(job);
-  const to = job.customerEmail?.trim();
+  const to = job.customerEmail?.trim().toLowerCase();
 
   if (!to) {
     throw new Error("No customer email on file.");
