@@ -117,7 +117,7 @@ src/
 
 Estimated beta cost: ~$25–40/mo (Firebase free tier + Vercel + Resend).
 
-## Internal (Click Logic)
+## Internal (Clip Logic)
 
 Use Job Tracker on real client projects to dogfood the inspection report flow before wider beta launch.
 
