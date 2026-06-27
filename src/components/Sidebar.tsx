@@ -83,7 +83,7 @@ export default function Sidebar({
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-        await signOut(auth);
+      await signOut(auth);
     } catch {
       // ignore
     }

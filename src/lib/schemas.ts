@@ -24,17 +24,27 @@ export const createJobSchema = z.object({
   customerName:  nonEmptyString(200),
   customerEmail: z.string().trim().email().max(254),
   customerPhone: z.string().trim().max(30),
-  jobType:       z.enum(["Garage Door", "HVAC", "General"]),
+  title:         nonEmptyString(200),
+  jobType:       z.enum(["Garage Door", "HVAC", "General"]).optional(),
   jobAddress:    z.string().trim().max(500),
-  checklist:     z.array(checklistItemSchema).max(100),
+  checklist:     z.array(checklistItemSchema).max(100).optional(),
   notes:         z.string().trim().max(5000),
-  photos:        z.array(jobPhotoSchema).max(30),
+  beforePhotos:  z.array(jobPhotoSchema).max(30),
+  afterPhotos:   z.array(jobPhotoSchema).max(30),
+  photos:        z.array(jobPhotoSchema).max(30).optional(),
 });
 
 export const completeJobUpdatesSchema = z.object({
-  checklist: z.array(checklistItemSchema).max(100).optional(),
-  notes:     z.string().trim().max(5000).optional(),
-  photos:    z.array(jobPhotoSchema).max(30).optional(),
+  checklist:    z.array(checklistItemSchema).max(100).optional(),
+  notes:        z.string().trim().max(5000).optional(),
+  beforePhotos: z.array(jobPhotoSchema).max(30).optional(),
+  afterPhotos:  z.array(jobPhotoSchema).max(30).optional(),
+  photos:       z.array(jobPhotoSchema).max(30).optional(),
+});
+
+export const updateJobSchema = completeJobUpdatesSchema.extend({
+  title:      nonEmptyString(200).optional(),
+  jobAddress: z.string().trim().max(500).optional(),
 });
 
 // ─── Customer schema ──────────────────────────────────────────────────────────
@@ -52,12 +62,20 @@ export const updateCustomerSchema = customerInputSchema.partial();
 // ─── Business schema ──────────────────────────────────────────────────────────
 
 export const upsertBusinessSchema = z.object({
-  name:      nonEmptyString(200),
-  ownerName: nonEmptyString(100),
-  email:     z.string().trim().email().max(254),
-  phone:     z.string().trim().max(30),
-  address:   z.string().trim().max(500),
-  logoUrl:   z.string().trim().url().max(2000).optional().or(z.literal("")),
+  name:            nonEmptyString(200),
+  ownerName:       nonEmptyString(100),
+  email:           z.string().trim().email().max(254),
+  phone:           z.string().trim().max(30),
+  address:         z.string().trim().max(500),
+  logoUrl:         z.string().trim().url().max(2000).optional().or(z.literal("")),
+  brandColor:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  googleReviewUrl: z.string().trim().url().max(2000).optional().or(z.literal("")),
+});
+
+export const betaAccessCodeSchema = z.object({
+  label:     nonEmptyString(100),
+  maxUses:   z.number().int().min(1).max(1000).default(1),
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 // ─── Team schema ──────────────────────────────────────────────────────────────
@@ -77,4 +95,5 @@ export const registerBusinessSchema = z.object({
   ownerName:    nonEmptyString(100),
   businessName: nonEmptyString(200),
   email:        z.string().trim().email().max(254),
+  accessCode:   z.string().trim().max(32).optional(),
 });

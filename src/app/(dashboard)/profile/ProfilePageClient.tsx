@@ -27,6 +27,8 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
   const [phone, setPhone] = useState(biz?.phone ?? "");
   const [address, setAddress] = useState(biz?.address ?? "");
   const [logoUrl, setLogoUrl] = useState(biz?.logoUrl ?? "");
+  const [brandColor, setBrandColor] = useState(biz?.brandColor ?? "#1E5AA8");
+  const [googleReviewUrl, setGoogleReviewUrl] = useState(biz?.googleReviewUrl ?? "");
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoProgress, setLogoProgress] = useState(0);
 
@@ -74,6 +76,8 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
         phone: phone.trim(),
         address: address.trim(),
         logoUrl,
+        brandColor,
+        googleReviewUrl,
       });
       if (!result.success) {
         setError(result.error ?? "Save failed.");
@@ -221,6 +225,43 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
               className="fp-input"
               maxLength={300}
               placeholder="456 Commerce Blvd, Tampa, FL 33602"
+            />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="brand-color">
+              Report accent color
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                id="brand-color"
+                type="color"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="h-10 w-14 rounded border border-neutral-200 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="fp-input flex-1 font-mono text-sm"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                maxLength={7}
+              />
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="form-label" htmlFor="google-review">
+              Google review link
+              <span className="text-neutral-400 font-normal ml-1">optional</span>
+            </label>
+            <input
+              id="google-review"
+              type="url"
+              value={googleReviewUrl}
+              onChange={(e) => setGoogleReviewUrl(e.target.value)}
+              className="fp-input"
+              placeholder="https://g.page/r/..."
+              maxLength={500}
             />
           </div>
         </div>

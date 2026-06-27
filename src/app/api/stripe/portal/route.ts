@@ -6,6 +6,10 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export async function POST() {
   try {
+    if (!stripe) {
+      return NextResponse.json({ error: "Billing is not enabled during beta." }, { status: 503 });
+    }
+
     const session = await getSession();
     if (!session?.business) {
       return NextResponse.json({ error: "Not authenticated." }, { status: 401 });

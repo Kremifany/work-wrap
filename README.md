@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Tracker Pro — v1 Beta
 
-## Getting Started
+Simple SaaS for tradespeople to document jobs and send professional **before/after inspection reports** to customers.
 
-First, run the development server:
+**Core loop:** Create job → Upload before/after photos → Add notes → Generate PDF → Email client
+
+Built as a Next.js monolith on the existing `job_tracker_pro` stack (Firebase + pdf-lib + Resend). Phase 2+ items (client portal, Stripe Connect, scheduling, SMS, R2 migration) are intentionally deferred.
+
+## v1 Scope (P0)
+
+| Feature | Status |
+|---------|--------|
+| Contractor auth (email/password, Google) | ✅ |
+| Beta access codes (admin-generated) | ✅ |
+| Jobs (title, address, notes, status) | ✅ |
+| Before / After photo upload | ✅ |
+| Client table (customers) | ✅ |
+| PDF inspection report (US Letter spec) | ✅ |
+| Send report to client (Resend) | ✅ |
+| Company logo + brand color | ✅ |
+| PDF preview in browser | ✅ |
+
+## Deferred (Phase 2+)
+
+- Client login portal
+- Stripe Connect invoicing (Stripe billing optional during beta)
+- Scheduling / dispatch
+- Twilio SMS
+- Cloudflare R2 migration (uses Firebase Storage today)
+- Mailgun (uses Resend today — same one-click send flow)
+
+## Quick Start
 
 ```bash
+cd job_tracker_pro
+npm install
+cp .env.example .env.local   # fill in Firebase + Resend keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Required environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Firebase (Auth, Firestore, Storage)
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
-## Learn More
+# Email (Resend — v1 report delivery)
+RESEND_API_KEY=
 
-To learn more about Next.js, take a look at the following resources:
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Beta gate (optional — set both to require invite codes)
+BETA_ACCESS_REQUIRED=false
+NEXT_PUBLIC_BETA_ACCESS_REQUIRED=false
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Stripe (optional during beta)
+STRIPE_SECRET_KEY=
+STRIPE_PRO_PRICE_ID=
+STRIPE_TEAM_PRICE_ID=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
-## Deploy on Vercel
+# Admin emails (comma-separated)
+ADMIN_EMAILS=you@company.com
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Beta access codes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Sign in as an admin (`ADMIN_EMAILS`).
+2. Go to **Admin → Access Codes** and generate a code.
+3. Set `BETA_ACCESS_REQUIRED=true` and `NEXT_PUBLIC_BETA_ACCESS_REQUIRED=true`.
+4. Share codes with beta contractors — free during beta.
+
+## PDF Inspection Report
+
+Reports follow the v1 spec:
+
+- **Page 1:** Cover + summary (job metadata, work notes)
+- **Page 2:** BEFORE photos (2-column grid, captions)
+- **Page 3:** AFTER photos (same layout)
+- **Page 4:** Sign-off (optional, `includeSignoffPage: true` in code)
+
+Filename: `{job-slug}-inspection-report-{YYYY-MM-DD}.pdf`
+
+Configure branding under **Profile → Report accent color** and **Company logo**.
+
+## Project Structure
+
+```
+src/
+  actions/          # Server actions (jobs, auth, customers, access codes)
+  app/              # Next.js App Router pages
+  components/job/   # JobForm, PhotoUpload, JobDetailActions
+  lib/
+    generate-pdf.ts # Inspection report PDF (pdf-lib)
+    send-report-email.ts
+    job-utils.ts    # Title, photo normalization, filename helpers
+```
+
+## Deploy
+
+- **Frontend:** Vercel (`npm run build`)
+- **Backend:** Same Next.js app (server actions + API routes)
+- **Data:** Firebase Firestore + Storage
+- **Email:** Resend
+
+Estimated beta cost: ~$25–40/mo (Firebase free tier + Vercel + Resend).
+
+## Internal (Click Logic)
+
+Use Job Tracker on real client projects to dogfood the inspection report flow before wider beta launch.
+
+---
+
+By [Clip Logic LLC](https://cliplogicpro.com)

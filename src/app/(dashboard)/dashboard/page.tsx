@@ -3,6 +3,8 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
+import { getJobTitle, normalizeJob } from "@/lib/job-utils";
+import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
   ClipboardList,
   Users,
@@ -20,7 +22,6 @@ async function getStats(businessId: string): Promise<DashboardStats> {
     adminDb
       .collection("jobs")
       .where("businessId", "==", businessId)
-      .orderBy("createdAt", "desc")
       .limit(100)
       .get(),
     adminDb
@@ -29,7 +30,9 @@ async function getStats(businessId: string): Promise<DashboardStats> {
       .get(),
   ]);
 
-  const jobs = jobsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Job));
+  const jobs = jobsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Job))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -43,8 +46,12 @@ async function getStats(businessId: string): Promise<DashboardStats> {
   };
 }
 
-export default async function DashboardPage() {
-  const session = await requireSession();
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ onboarding?: string }>;
+}) {
+  const [session, params] = await Promise.all([requireSession(), searchParams]);
 
   if (!session.business) {
     return (
@@ -63,6 +70,9 @@ export default async function DashboardPage() {
   }
 
   const stats = await getStats(session.business.id);
+  const firstName = session.business.ownerName.split(" ")[0];
+  const showOnboarding =
+    params.onboarding === "1" && !session.business.dashboardOnboardingSeenAt;
   const planLimits = {
     free: 5,
     pro: Infinity,
@@ -77,17 +87,24 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <h1 className="text-2xl font-bold text-brand-900">Dashboard</h1>
-          <p className="text-neutral-500 text-sm mt-0.5">
-            Welcome back, {session.business.ownerName.split(" ")[0]}
-          </p>
+          <Link href="/jobs/new" className="btn btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            New Job
+          </Link>
         </div>
-        <Link href="/jobs/new" className="btn btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          New Job
-        </Link>
+        {showOnboarding ? (
+          <DashboardOnboarding
+            firstName={firstName}
+            businessName={session.business.name}
+          />
+        ) : (
+          <p className="text-neutral-500 text-sm">
+            Welcome back, {firstName}
+          </p>
+        )}
       </div>
 
       {/* Stats grid */}
@@ -197,7 +214,7 @@ export default async function DashboardPage() {
                 {stats.recentJobs.map((job) => (
                   <tr key={job.id}>
                     <td className="font-medium">{job.customerName || "—"}</td>
-                    <td>{job.jobType}</td>
+                    <td>{getJobTitle(job)}</td>
                     <td className="text-neutral-500 max-w-xs truncate">{job.jobAddress || "—"}</td>
                     <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
                     <td>

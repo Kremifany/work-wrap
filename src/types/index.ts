@@ -14,10 +14,14 @@ export interface Business {
   logoUrl: string;
   phone: string;
   address: string;
+  brandColor: string;         // PDF accent color, default #1E5AA8
+  googleReviewUrl: string;    // optional sign-off / email CTA
   plan: PlanType;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   jobsThisMonth: number;
+  accessCodeUsed: string | null;
+  dashboardOnboardingSeenAt?: string | null;
   createdAt: string;
 }
 
@@ -65,15 +69,31 @@ export interface Job {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  jobType: JobType;
+  title: string;              // v1 job title, e.g. "Kitchen repipe"
+  jobType: JobType;           // legacy category — kept for templates
   jobAddress: string;
   checklist: ChecklistItem[];
   notes: string;
-  photos: JobPhoto[];
+  beforePhotos: JobPhoto[];
+  afterPhotos: JobPhoto[];
+  photos: JobPhoto[];         // legacy combined array
   pdfUrl: string | null;
   status: JobStatus;
+  completedAt: string | null;
   reportSentAt: string | null;
   createdAt: string;
+}
+
+// ─── Beta access ─────────────────────────────────────────────────────────────
+export interface BetaAccessCode {
+  id: string;
+  code: string;
+  label: string;
+  maxUses: number;
+  useCount: number;
+  active: boolean;
+  createdAt: string;
+  expiresAt: string | null;
 }
 
 // ─── Server Action result ─────────────────────────────────────────────────

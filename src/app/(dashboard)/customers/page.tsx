@@ -17,10 +17,11 @@ export default async function CustomersPage() {
   const snap = await adminDb
     .collection("customers")
     .where("businessId", "==", session.business.id)
-    .orderBy("name", "asc")
     .get();
 
-  const customers = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer));
+  const customers = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Customer))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-6">

@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
+import { getJobTitle, normalizeJob } from "@/lib/job-utils";
 import { EditCustomerForm } from "@/components/CustomerForms";
 import { ArrowLeft } from "lucide-react";
 import type { Customer, Job } from "@/types";
@@ -32,9 +33,7 @@ export default async function CustomerDetailPage({
     adminDb
       .collection("jobs")
       .where("businessId", "==", session.business.id)
-      .where("customerId", "==", id)
-      .orderBy("createdAt", "desc")
-      .limit(50)
+      .limit(200)
       .get(),
   ]);
 
@@ -42,7 +41,11 @@ export default async function CustomerDetailPage({
   const customer = { id: custSnap.id, ...custSnap.data() } as Customer;
   if (customer.businessId !== session.business.id) notFound();
 
-  const jobs = jobsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Job));
+  const jobs = jobsSnap.docs
+    .map((d) => normalizeJob({ id: d.id, ...d.data() } as Job))
+    .filter((j) => j.customerId === id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 50);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -97,7 +100,7 @@ export default async function CustomerDetailPage({
               <tbody>
                 {jobs.map((job) => (
                   <tr key={job.id}>
-                    <td className="font-medium">{job.jobType}</td>
+                    <td className="font-medium">{getJobTitle(job)}</td>
                     <td className="text-neutral-500 text-sm max-w-xs truncate">
                       {job.jobAddress || "—"}
                     </td>

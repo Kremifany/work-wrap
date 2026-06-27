@@ -2,6 +2,8 @@ import "server-only";
 
 import { Resend } from "resend";
 import { serverEnv } from "./env.server";
+import { logger } from "./logger";
+import { getCompletedDate, getJobTitle, getReportFilename } from "@/lib/job-utils";
 import type { Business, Job } from "@/types";
 
 const resend = new Resend(serverEnv.RESEND_API_KEY);
@@ -12,27 +14,29 @@ interface SendReportEmailOptions {
   pdfBuffer: Uint8Array;
 }
 
+function formatFromAddress(businessName: string): string {
+  const safeName = businessName.replace(/[<>"]/g, "").trim() || "Job Tracker";
+  const match = serverEnv.RESEND_FROM.match(/<([^>]+)>/);
+  const email = match?.[1] ?? serverEnv.RESEND_FROM;
+  return `${safeName} via Job Tracker <${email}>`;
+}
+
 export async function sendReportEmail({
   job,
   business,
   pdfBuffer,
 }: SendReportEmailOptions): Promise<void> {
-  const dateStr = new Date(job.createdAt).toLocaleDateString("en-US", {
-    year: "numeric", month: "long", day: "numeric",
-  });
+  const jobTitle = getJobTitle(job);
+  const dateStr = getCompletedDate(job);
+  const filename = getReportFilename(job);
+  const to = job.customerEmail?.trim();
 
-  const fromAddress = `${business.name} via Job Tracker Pro <reports@jobtrackerproapp.com>`;
-  const subject = `Your ${job.jobType} service report – ${dateStr}`;
+  if (!to) {
+    throw new Error("No customer email on file.");
+  }
 
-  const checkedItems = job.checklist.filter((c) => c.checked);
-  const checklistHtml = checkedItems
-    .map(
-      (c) =>
-        `<li style="padding:4px 0;color:#0f172a;">
-          <span style="color:#15803d;font-weight:600;">✓</span> ${c.item}
-        </li>`
-    )
-    .join("");
+  const fromAddress = formatFromAddress(business.name);
+  const subject = `Your inspection report — ${jobTitle}`;
 
   const html = `
 <!DOCTYPE html>
@@ -40,86 +44,92 @@ export async function sendReportEmail({
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-    <!-- Header -->
-    <div style="background:#1e40af;padding:28px 32px;">
+    <div style="background:#1E5AA8;padding:28px 32px;">
       <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${business.name}</h1>
-      <p style="margin:4px 0 0;color:rgba(255,255,255,.75);font-size:14px;">Job Completion Report</p>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,.85);font-size:14px;">Inspection Report Ready</p>
     </div>
-    <!-- Body -->
     <div style="padding:32px;">
-      <p style="margin:0 0 16px;font-size:16px;color:#0f172a;">
+      <p style="margin:0 0 16px;font-size:16px;color:#333;">
         Hi ${job.customerName},
       </p>
       <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
-        Your ${job.jobType} service has been completed. Please find your official job report attached to this email.
-        Everything we did during this visit is documented below.
+        Your inspection report for <strong>${jobTitle}</strong> at ${job.jobAddress || "your property"} is attached.
+        It includes before and after photos plus a summary of the work completed on ${dateStr}.
       </p>
-
-      <!-- Job details -->
       <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:24px;">
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
           <tr>
-            <td style="padding:6px 0;color:#475569;width:140px;">Date</td>
-            <td style="padding:6px 0;color:#0f172a;font-weight:500;">${dateStr}</td>
+            <td style="padding:6px 0;color:#475569;width:140px;">Job</td>
+            <td style="padding:6px 0;color:#333;font-weight:500;">${jobTitle}</td>
           </tr>
           <tr>
-            <td style="padding:6px 0;color:#475569;">Technician</td>
-            <td style="padding:6px 0;color:#0f172a;font-weight:500;">${job.techName}</td>
+            <td style="padding:6px 0;color:#475569;">Address</td>
+            <td style="padding:6px 0;color:#333;font-weight:500;">${job.jobAddress || "—"}</td>
           </tr>
           <tr>
-            <td style="padding:6px 0;color:#475569;">Service Address</td>
-            <td style="padding:6px 0;color:#0f172a;font-weight:500;">${job.jobAddress}</td>
+            <td style="padding:6px 0;color:#475569;">Date completed</td>
+            <td style="padding:6px 0;color:#333;font-weight:500;">${dateStr}</td>
           </tr>
           <tr>
-            <td style="padding:6px 0;color:#475569;">Job Type</td>
-            <td style="padding:6px 0;color:#0f172a;font-weight:500;">${job.jobType}</td>
+            <td style="padding:6px 0;color:#475569;">Prepared by</td>
+            <td style="padding:6px 0;color:#333;font-weight:500;">${business.name}</td>
           </tr>
         </table>
       </div>
-
-      <!-- Checklist -->
       ${
-        checkedItems.length > 0
-          ? `<h3 style="margin:0 0 12px;font-size:15px;color:#0f172a;">Completed Items</h3>
-             <ul style="margin:0 0 24px;padding:0 0 0 4px;list-style:none;">
-               ${checklistHtml}
-             </ul>`
+        business.googleReviewUrl
+          ? `<p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
+               If you're happy with our work, we'd appreciate a review:
+               <a href="${business.googleReviewUrl}" style="color:#1E5AA8;">Leave a Google review</a>.
+             </p>`
           : ""
       }
-
-      ${
-        job.notes
-          ? `<h3 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Tech Notes</h3>
-             <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6;background:#f8fafc;padding:16px;border-radius:8px;">${job.notes}</p>`
-          : ""
-      }
-
       <p style="margin:0;font-size:14px;color:#475569;line-height:1.6;">
-        If you have any questions about the work performed, please contact ${business.name} at
-        ${business.phone ? `<a href="tel:${business.phone}" style="color:#1e40af;">${business.phone}</a>` : business.email}.
+        Questions? Contact ${business.name}${
+          business.phone
+            ? ` at <a href="tel:${business.phone}" style="color:#1E5AA8;">${business.phone}</a>`
+            : business.email
+              ? ` at <a href="mailto:${business.email}" style="color:#1E5AA8;">${business.email}</a>`
+              : ""
+        }.
       </p>
     </div>
-    <!-- Footer -->
     <div style="padding:24px 32px;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="margin:0;font-size:12px;color:#94a3b8;">
-        This report was automatically generated by
-        <a href="${serverEnv.NEXT_PUBLIC_APP_URL}" style="color:#1e40af;">Job Tracker Pro</a>.
+        Sent via
+        <a href="${serverEnv.NEXT_PUBLIC_APP_URL}" style="color:#1E5AA8;">Job Tracker</a>
       </p>
     </div>
   </div>
 </body>
 </html>`;
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: fromAddress,
-    to: job.customerEmail,
+    to,
     subject,
     html,
     attachments: [
       {
-        filename: `JobTrackerPro-Report-${job.id}.pdf`,
+        filename,
         content: Buffer.from(pdfBuffer).toString("base64"),
+        contentType: "application/pdf",
       },
     ],
   });
+
+  if (error) {
+    logger.error("Resend report email failed", {
+      to,
+      from: fromAddress,
+      error: error.message,
+      name: error.name,
+    });
+    throw new Error(
+      error.message ||
+        "Email provider rejected the message. Check Resend domain verification and sender settings."
+    );
+  }
+
+  logger.info("Report email sent", { to, messageId: data?.id });
 }

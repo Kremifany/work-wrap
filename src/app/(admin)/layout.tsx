@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
-import { LayoutDashboard, Building2, Briefcase, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Briefcase, KeyRound, LogOut } from "lucide-react";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -42,6 +42,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
             >
               <Briefcase className="h-4 w-4" /> Jobs
+            </Link>
+            <Link
+              href="/admin/access-codes"
+              className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
+            >
+              <KeyRound className="h-4 w-4" /> Access Codes
             </Link>
             <Link
               href="/login"

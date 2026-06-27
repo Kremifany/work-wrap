@@ -12,6 +12,7 @@ import {
   Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import PrefetchAuthRoutes from "@/components/auth/PrefetchAuthRoutes";
 
 function MarketingNav() {
   return (
@@ -28,8 +29,8 @@ function MarketingNav() {
           <Link href="/contact"      className="hover:text-brand-800">Contact</Link>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/login"><Button variant="ghost" size="sm">Sign in</Button></Link>
-          <Link href="/register"><Button size="sm">Start Free</Button></Link>
+          <Link href="/login" prefetch><Button variant="ghost" size="sm">Sign in</Button></Link>
+          <Link href="/register" prefetch><Button size="sm">Start Free</Button></Link>
         </div>
       </div>
     </header>
@@ -73,6 +74,7 @@ export default function LandingPage() {
 
   return (
     <>
+      <PrefetchAuthRoutes />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
@@ -100,7 +102,7 @@ export default function LandingPage() {
               to the customer <strong className="text-white">before they leave the driveway</strong>.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Link href="/register">
+              <Link href="/register" prefetch>
                 <Button size="lg" className="bg-accent-700 hover:bg-accent-600 text-white shadow-lg">
                   Start Free — No Card Needed <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -185,7 +187,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register">
+                <Link href="/register" prefetch>
                   <Button className="bg-accent-700 hover:bg-accent-600 text-white">
                     Get Started Free <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -223,7 +225,7 @@ export default function LandingPage() {
             Join Tampa Bay service businesses already saving time and winning more referrals with Job Tracker Pro.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link href="/register"><Button size="lg">Create Free Account <ChevronRight className="h-4 w-4" /></Button></Link>
+            <Link href="/register" prefetch><Button size="lg">Create Free Account <ChevronRight className="h-4 w-4" /></Button></Link>
             <Link href="/pricing"><Button size="lg" variant="outline">See All Plans</Button></Link>
           </div>
         </section>

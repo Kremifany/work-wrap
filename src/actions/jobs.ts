@@ -6,7 +6,12 @@ import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
 import { generateJobPDF } from "@/lib/generate-pdf";
 import { sendReportEmail } from "@/lib/send-report-email";
-import { createJobSchema, completeJobUpdatesSchema } from "@/lib/schemas";
+import { normalizeJob } from "@/lib/job-utils";
+import {
+  createJobSchema,
+  completeJobUpdatesSchema,
+  updateJobSchema,
+} from "@/lib/schemas";
 import type { ActionResult, ChecklistItem, Job, JobPhoto, JobType } from "@/types";
 
 // ── Plan-limit check ─────────────────────────────────────────────────────────
@@ -17,18 +22,68 @@ async function checkJobLimit(businessId: string, plan: string): Promise<string |
   const limit = JOB_LIMITS[plan] ?? 5;
   if (limit === Infinity) return null;
 
-  const now   = new Date();
+  const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const snap  = await adminDb
+  const snap = await adminDb
     .collection("jobs")
     .where("businessId", "==", businessId)
-    .where("createdAt", ">=", start)
     .get();
 
-  if (snap.size >= limit) {
+  const count = snap.docs.filter((d) => {
+    const createdAt = d.data().createdAt as string | undefined;
+    return createdAt != null && createdAt >= start;
+  }).length;
+
+  if (count >= limit) {
     return `Your ${plan} plan allows ${limit} jobs per month. Please upgrade to continue.`;
   }
   return null;
+}
+
+async function loadOwnedJob(jobId: string, businessId: string): Promise<Job | null> {
+  const jobSnap = await adminDb.collection("jobs").doc(jobId).get();
+  if (!jobSnap.exists) return null;
+  const job = normalizeJob({ id: jobSnap.id, ...jobSnap.data() } as Job);
+  if (job.businessId !== businessId) return null;
+  return job;
+}
+
+async function savePdfToStorage(
+  businessId: string,
+  jobId: string,
+  pdfBytes: Uint8Array
+): Promise<string> {
+  const bucket = adminStorage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+  const filePath = `reports/${businessId}/${jobId}/report.pdf`;
+  const file = bucket.file(filePath);
+  await file.save(Buffer.from(pdfBytes), {
+    contentType: "application/pdf",
+    resumable: false,
+  });
+  await file.makePublic();
+  return file.publicUrl();
+}
+
+function buildJobPayload(input: {
+  title: string;
+  jobType?: JobType;
+  checklist?: ChecklistItem[];
+  notes: string;
+  beforePhotos: JobPhoto[];
+  afterPhotos: JobPhoto[];
+  photos?: JobPhoto[];
+}) {
+  const beforePhotos = input.beforePhotos;
+  const afterPhotos = input.afterPhotos;
+  return {
+    title: input.title,
+    jobType: input.jobType ?? "General",
+    checklist: input.checklist ?? [],
+    notes: input.notes,
+    beforePhotos,
+    afterPhotos,
+    photos: input.photos ?? [...beforePhotos, ...afterPhotos],
+  };
 }
 
 // ── Create draft job ─────────────────────────────────────────────────────────
@@ -40,11 +95,13 @@ export interface CreateJobInput {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  jobType: JobType;
+  title: string;
+  jobType?: JobType;
   jobAddress: string;
-  checklist: ChecklistItem[];
+  checklist?: ChecklistItem[];
   notes: string;
-  photos: JobPhoto[];
+  beforePhotos: JobPhoto[];
+  afterPhotos: JobPhoto[];
 }
 
 export async function createJobAction(
@@ -52,7 +109,9 @@ export async function createJobAction(
 ): Promise<ActionResult<{ jobId: string }>> {
   try {
     const parsed = createJobSchema.safeParse(input);
-    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    }
 
     const session = await getSession();
     if (!session) return { success: false, error: "Not authenticated." };
@@ -64,15 +123,22 @@ export async function createJobAction(
     const now = new Date().toISOString();
     const jobData: Omit<Job, "id"> = {
       businessId: session.business.id,
-      ...input,
+      techId: input.techId,
+      techName: input.techName,
+      customerId: input.customerId,
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      customerPhone: input.customerPhone,
+      jobAddress: input.jobAddress,
+      ...buildJobPayload(input),
       pdfUrl: null,
       status: "draft",
+      completedAt: null,
       reportSentAt: null,
       createdAt: now,
     };
     const ref = await adminDb.collection("jobs").add(jobData);
 
-    // Update customer job count if linked
     if (input.customerId) {
       await adminDb
         .collection("customers")
@@ -88,71 +154,175 @@ export async function createJobAction(
   }
 }
 
-// ── Complete job + generate PDF + email ──────────────────────────────────────
+// ── Update draft job ─────────────────────────────────────────────────────────
 
-export async function completeJobAction(
+export async function updateJobAction(
   jobId: string,
-  updates: Partial<Pick<Job, "checklist" | "notes" | "photos">>
+  updates: Partial<
+    Pick<Job, "title" | "jobAddress" | "checklist" | "notes" | "beforePhotos" | "afterPhotos">
+  >
+): Promise<ActionResult> {
+  try {
+    const parsed = updateJobSchema.safeParse(updates);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid updates." };
+    }
+
+    const session = await getSession();
+    if (!session?.business) return { success: false, error: "Not authenticated." };
+
+    const job = await loadOwnedJob(jobId, session.business.id);
+    if (!job) return { success: false, error: "Job not found." };
+    if (job.status === "completed") {
+      return { success: false, error: "Completed jobs cannot be edited." };
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (updates.title !== undefined) patch.title = updates.title;
+    if (updates.jobAddress !== undefined) patch.jobAddress = updates.jobAddress;
+    if (updates.checklist !== undefined) patch.checklist = updates.checklist;
+    if (updates.notes !== undefined) patch.notes = updates.notes;
+    if (updates.beforePhotos !== undefined) {
+      patch.beforePhotos = updates.beforePhotos;
+      patch.photos = [
+        ...updates.beforePhotos,
+        ...(updates.afterPhotos ?? job.afterPhotos ?? []),
+      ];
+    }
+    if (updates.afterPhotos !== undefined) {
+      patch.afterPhotos = updates.afterPhotos;
+      patch.photos = [
+        ...(updates.beforePhotos ?? job.beforePhotos ?? []),
+        ...updates.afterPhotos,
+      ];
+    }
+
+    await adminDb.collection("jobs").doc(jobId).update(patch);
+    revalidatePath(`/jobs/${jobId}`);
+    revalidatePath("/jobs");
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update job.";
+    return { success: false, error: msg };
+  }
+}
+
+// ── Generate PDF (no email) ──────────────────────────────────────────────────
+
+export async function generateReportAction(
+  jobId: string,
+  updates: Partial<Pick<Job, "checklist" | "notes" | "beforePhotos" | "afterPhotos">> = {}
 ): Promise<ActionResult<{ pdfUrl: string }>> {
   try {
     const parsed = completeJobUpdatesSchema.safeParse(updates);
-    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid updates." };
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid updates." };
+    }
 
     const session = await getSession();
-    if (!session || !session.business) return { success: false, error: "Not authenticated." };
+    if (!session?.business) return { success: false, error: "Not authenticated." };
 
-    const jobRef  = adminDb.collection("jobs").doc(jobId);
-    const jobSnap = await jobRef.get();
-    if (!jobSnap.exists) return { success: false, error: "Job not found." };
+    const job = await loadOwnedJob(jobId, session.business.id);
+    if (!job) return { success: false, error: "Job not found." };
 
-    const job = { id: jobSnap.id, ...jobSnap.data() } as Job;
-    if (job.businessId !== session.business.id) {
-      return { success: false, error: "Access denied." };
-    }
-
-    // Merge any last-minute updates
-    const finalJob: Job = {
+    const finalJob = normalizeJob({
       ...job,
       ...(updates.checklist !== undefined && { checklist: updates.checklist }),
-      ...(updates.notes     !== undefined && { notes: updates.notes }),
-      ...(updates.photos    !== undefined && { photos: updates.photos }),
-    };
-
-    const business = session.business;
-
-    // Generate PDF
-    const pdfBytes = await generateJobPDF(finalJob, business);
-
-    // Upload PDF to Firebase Storage
-    const bucket   = adminStorage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
-    const filePath = `reports/${business.id}/${jobId}/report.pdf`;
-    const file     = bucket.file(filePath);
-    await file.save(Buffer.from(pdfBytes), {
-      contentType: "application/pdf",
-      resumable:   false,
+      ...(updates.notes !== undefined && { notes: updates.notes }),
+      ...(updates.beforePhotos !== undefined && { beforePhotos: updates.beforePhotos }),
+      ...(updates.afterPhotos !== undefined && { afterPhotos: updates.afterPhotos }),
     });
-    await file.makePublic();
-    const pdfUrl = file.publicUrl();
 
-    // Send email
-    if (finalJob.customerEmail) {
-      await sendReportEmail({ job: finalJob, business, pdfBuffer: pdfBytes });
+    if (updates.checklist !== undefined) await adminDb.collection("jobs").doc(jobId).update({ checklist: updates.checklist });
+    if (updates.notes !== undefined) await adminDb.collection("jobs").doc(jobId).update({ notes: updates.notes });
+    if (updates.beforePhotos !== undefined || updates.afterPhotos !== undefined) {
+      await adminDb.collection("jobs").doc(jobId).update({
+        beforePhotos: finalJob.beforePhotos,
+        afterPhotos: finalJob.afterPhotos,
+        photos: finalJob.photos,
+      });
     }
 
-    // Persist to Firestore
-    const completedAt = new Date().toISOString();
-    await jobRef.update({
-      ...(updates.checklist !== undefined && { checklist: updates.checklist }),
-      ...(updates.notes     !== undefined && { notes: updates.notes }),
-      ...(updates.photos    !== undefined && { photos: updates.photos }),
-      status:        "completed",
-      pdfUrl,
-      reportSentAt:  finalJob.customerEmail ? completedAt : null,
+    const pdfBytes = await generateJobPDF(finalJob, session.business);
+    const pdfUrl = await savePdfToStorage(session.business.id, jobId, pdfBytes);
+
+    await adminDb.collection("jobs").doc(jobId).update({ pdfUrl });
+
+    revalidatePath(`/jobs/${jobId}`);
+    return { success: true, data: { pdfUrl } };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to generate report.";
+    return { success: false, error: msg };
+  }
+}
+
+// ── Send report email ────────────────────────────────────────────────────────
+
+export async function sendReportAction(jobId: string): Promise<ActionResult> {
+  try {
+    const session = await getSession();
+    if (!session?.business) return { success: false, error: "Not authenticated." };
+
+    const job = await loadOwnedJob(jobId, session.business.id);
+    if (!job) return { success: false, error: "Job not found." };
+    if (!job.customerEmail) return { success: false, error: "No customer email on file." };
+
+    const business = session.business;
+    const pdfBytes = await generateJobPDF(job, business);
+    await sendReportEmail({ job, business, pdfBuffer: pdfBytes });
+
+    const sentAt = new Date().toISOString();
+    await adminDb.collection("jobs").doc(jobId).update({
+      reportSentAt: sentAt,
+      status: "completed",
+      completedAt: job.completedAt ?? sentAt,
+      pdfUrl: job.pdfUrl ?? (await savePdfToStorage(business.id, jobId, pdfBytes)),
     });
+
+    revalidatePath(`/jobs/${jobId}`);
+    revalidatePath("/jobs");
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to send report.";
+    return { success: false, error: msg };
+  }
+}
+
+// ── Complete job + generate PDF + email (one-click) ──────────────────────────
+
+export async function completeJobAction(
+  jobId: string,
+  updates: Partial<Pick<Job, "checklist" | "notes" | "beforePhotos" | "afterPhotos">> = {}
+): Promise<ActionResult<{ pdfUrl: string }>> {
+  try {
+    const genResult = await generateReportAction(jobId, updates);
+    if (!genResult.success) return genResult;
+
+    const session = await getSession();
+    if (!session?.business) return { success: false, error: "Not authenticated." };
+
+    const job = await loadOwnedJob(jobId, session.business.id);
+    if (!job) return { success: false, error: "Job not found." };
+
+    if (job.customerEmail) {
+      const pdfBytes = await generateJobPDF(job, session.business);
+      await sendReportEmail({ job, business: session.business, pdfBuffer: pdfBytes });
+      const completedAt = new Date().toISOString();
+      await adminDb.collection("jobs").doc(jobId).update({
+        status: "completed",
+        completedAt,
+        reportSentAt: completedAt,
+      });
+    } else {
+      await adminDb.collection("jobs").doc(jobId).update({
+        status: "completed",
+        completedAt: new Date().toISOString(),
+      });
+    }
 
     revalidatePath("/jobs");
     revalidatePath(`/jobs/${jobId}`);
-    return { success: true, data: { pdfUrl } };
+    return genResult;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to complete job.";
     return { success: false, error: msg };
@@ -162,31 +332,7 @@ export async function completeJobAction(
 // ── Resend report ────────────────────────────────────────────────────────────
 
 export async function resendReportAction(jobId: string): Promise<ActionResult> {
-  try {
-    const session = await getSession();
-    if (!session || !session.business) return { success: false, error: "Not authenticated." };
-
-    const jobSnap = await adminDb.collection("jobs").doc(jobId).get();
-    if (!jobSnap.exists) return { success: false, error: "Job not found." };
-
-    const job = { id: jobSnap.id, ...jobSnap.data() } as Job;
-    if (job.businessId !== session.business.id) return { success: false, error: "Access denied." };
-    if (!job.customerEmail) return { success: false, error: "No customer email on file." };
-
-    const business = session.business;
-    const pdfBytes = await generateJobPDF(job, business);
-    await sendReportEmail({ job, business, pdfBuffer: pdfBytes });
-
-    await adminDb.collection("jobs").doc(jobId).update({
-      reportSentAt: new Date().toISOString(),
-    });
-
-    revalidatePath(`/jobs/${jobId}`);
-    return { success: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to resend report.";
-    return { success: false, error: msg };
-  }
+  return sendReportAction(jobId);
 }
 
 // ── Delete job ───────────────────────────────────────────────────────────────
@@ -194,7 +340,7 @@ export async function resendReportAction(jobId: string): Promise<ActionResult> {
 export async function deleteJobAction(jobId: string): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || !session.business) return { success: false, error: "Not authenticated." };
+    if (!session?.business) return { success: false, error: "Not authenticated." };
 
     const jobSnap = await adminDb.collection("jobs").doc(jobId).get();
     if (!jobSnap.exists) return { success: false, error: "Job not found." };
@@ -210,4 +356,3 @@ export async function deleteJobAction(jobId: string): Promise<ActionResult> {
     return { success: false, error: msg };
   }
 }
-
