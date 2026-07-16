@@ -13,6 +13,8 @@ export interface UpsertBusinessInput {
   phone: string;
   address: string;
   logoUrl?: string;
+  brandColor?: string;
+  googleReviewUrl?: string;
 }
 
 export async function upsertBusinessProfileAction(
@@ -28,7 +30,6 @@ export async function upsertBusinessProfileAction(
     const uid = session.user.uid;
 
     if (session.business) {
-      // Update existing
       await adminDb.collection("businesses").doc(session.business.id).update({
         name:       input.name,
         ownerName:  input.ownerName,
@@ -36,6 +37,8 @@ export async function upsertBusinessProfileAction(
         phone:      input.phone,
         address:    input.address,
         ...(input.logoUrl !== undefined && { logoUrl: input.logoUrl }),
+        ...(input.brandColor !== undefined && { brandColor: input.brandColor }),
+        ...(input.googleReviewUrl !== undefined && { googleReviewUrl: input.googleReviewUrl }),
       });
       revalidatePath("/profile");
       return { success: true, data: { businessId: session.business.id } };
@@ -50,10 +53,13 @@ export async function upsertBusinessProfileAction(
       phone:                 input.phone,
       address:               input.address,
       logoUrl:               input.logoUrl ?? "",
+      brandColor:            input.brandColor ?? "#1E5AA8",
+      googleReviewUrl:       input.googleReviewUrl ?? "",
       plan:                  "free",
       stripeCustomerId:      null,
       stripeSubscriptionId:  null,
       jobsThisMonth:         0,
+      accessCodeUsed:        null,
       createdAt:             new Date().toISOString(),
     };
     const ref = await adminDb.collection("businesses").add(now);
@@ -61,6 +67,22 @@ export async function upsertBusinessProfileAction(
     return { success: true, data: { businessId: ref.id } };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to save profile.";
+    return { success: false, error: msg };
+  }
+}
+
+export async function completeDashboardOnboardingAction(): Promise<ActionResult> {
+  try {
+    const session = await getSession();
+    if (!session?.business) return { success: false, error: "Not authenticated." };
+
+    await adminDb.collection("businesses").doc(session.business.id).update({
+      dashboardOnboardingSeenAt: new Date().toISOString(),
+    });
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to save.";
     return { success: false, error: msg };
   }
 }

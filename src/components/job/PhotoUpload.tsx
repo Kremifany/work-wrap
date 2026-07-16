@@ -11,6 +11,7 @@ interface PhotoUploadProps {
   photos: JobPhoto[];
   onChange: (photos: JobPhoto[]) => void;
   max?: number;
+  storagePrefix?: "before" | "after" | "general";
 }
 
 interface UploadProgress {
@@ -28,6 +29,7 @@ export default function PhotoUpload({
   photos,
   onChange,
   max = 20,
+  storagePrefix = "general",
 }: PhotoUploadProps) {
   const [uploading, setUploading] = useState<UploadProgress[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function PhotoUpload({
         return;
       }
 
-      const path = `businesses/${businessId}/jobs/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const path = `businesses/${businessId}/jobs/${storagePrefix}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, file);
 

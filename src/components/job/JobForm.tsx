@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJobAction } from "@/actions/jobs";
 import { createCustomerAction } from "@/actions/customers";
-import ChecklistEditor from "./ChecklistEditor";
 import PhotoUpload from "./PhotoUpload";
 import { Alert, Spinner } from "@/components/ui";
-import { getChecklistTemplate, JOB_TYPES } from "@/lib/checklist-templates";
-import type { ChecklistItem, Customer, JobPhoto, JobType, SessionContext } from "@/types";
+import type { Customer, JobPhoto, SessionContext } from "@/types";
 
 interface JobFormProps {
   session: SessionContext;
@@ -22,7 +20,6 @@ export default function JobForm({ session, customers }: JobFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Customer
   const [customerMode, setCustomerMode] = useState<CustomerMode>(
     customers.length > 0 ? "existing" : "new"
   );
@@ -31,27 +28,11 @@ export default function JobForm({ session, customers }: JobFormProps) {
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
 
-  // Job fields
-  const [jobType, setJobType] = useState<JobType>("General");
+  const [title, setTitle] = useState("");
   const [jobAddress, setJobAddress] = useState("");
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(() =>
-    getChecklistTemplate("General")
-  );
   const [notes, setNotes] = useState("");
-  const [photos, setPhotos] = useState<JobPhoto[]>([]);
-
-  // When job type changes, reset checklist to template
-  useEffect(() => {
-    setChecklist(getChecklistTemplate(jobType));
-  }, [jobType]);
-
-  // Auto-fill address from selected customer
-  useEffect(() => {
-    if (customerMode === "existing" && selectedCustomerId) {
-      const customer = customers.find((c) => c.id === selectedCustomerId);
-      if (customer?.address) setJobAddress(customer.address);
-    }
-  }, [selectedCustomerId, customerMode, customers]);
+  const [beforePhotos, setBeforePhotos] = useState<JobPhoto[]>([]);
+  const [afterPhotos, setAfterPhotos] = useState<JobPhoto[]>([]);
 
   const getCustomerDetails = () => {
     if (customerMode === "existing") {
@@ -82,11 +63,14 @@ export default function JobForm({ session, customers }: JobFormProps) {
       setError("Customer name is required.");
       return;
     }
+    if (!title.trim()) {
+      setError("Job title is required.");
+      return;
+    }
 
     setSubmitting(true);
 
     try {
-      // If new customer, create them first
       let resolvedCustomerId = customerId;
       if (customerMode === "new" && customerName.trim()) {
         const newCustResult = await createCustomerAction({
@@ -114,11 +98,11 @@ export default function JobForm({ session, customers }: JobFormProps) {
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
         customerPhone: customerPhone.trim(),
-        jobType,
+        title: title.trim(),
         jobAddress: jobAddress.trim(),
-        checklist,
         notes: notes.trim(),
-        photos,
+        beforePhotos,
+        afterPhotos,
       });
 
       if (!result.success) {
@@ -143,7 +127,6 @@ export default function JobForm({ session, customers }: JobFormProps) {
         </Alert>
       )}
 
-      {/* ── Customer ─────────────────────────────────────── */}
       <section className="job-form-section">
         <h2 className="section-title">Customer</h2>
 
@@ -205,7 +188,7 @@ export default function JobForm({ session, customers }: JobFormProps) {
             </div>
             <div>
               <label className="form-label" htmlFor="cust-email">
-                Email
+                Email <span className="text-error-500">*</span>
               </label>
               <input
                 id="cust-email"
@@ -214,6 +197,7 @@ export default function JobForm({ session, customers }: JobFormProps) {
                 onChange={(e) => setNewCustomerEmail(e.target.value)}
                 className="fp-input"
                 placeholder="jane@email.com"
+                required
                 maxLength={200}
               />
             </div>
@@ -235,27 +219,23 @@ export default function JobForm({ session, customers }: JobFormProps) {
         )}
       </section>
 
-      {/* ── Job Details ────────────────────────────────────── */}
       <section className="job-form-section">
         <h2 className="section-title">Job Details</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="form-label" htmlFor="job-type">
-              Job type <span className="text-error-500">*</span>
+            <label className="form-label" htmlFor="job-title">
+              Job title <span className="text-error-500">*</span>
             </label>
-            <select
-              id="job-type"
-              value={jobType}
-              onChange={(e) => setJobType(e.target.value as JobType)}
+            <input
+              id="job-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               className="fp-input"
+              placeholder="Kitchen repipe"
               required
-            >
-              {JOB_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+              maxLength={200}
+            />
           </div>
           <div>
             <label className="form-label" htmlFor="job-address">
@@ -267,52 +247,53 @@ export default function JobForm({ session, customers }: JobFormProps) {
               value={jobAddress}
               onChange={(e) => setJobAddress(e.target.value)}
               className="fp-input"
-              placeholder="123 Main St, Tampa FL 33602"
+              placeholder="123 Oak St, Tampa FL 33602"
               maxLength={300}
             />
           </div>
         </div>
       </section>
 
-      {/* ── Checklist ─────────────────────────────────────── */}
       <section className="job-form-section">
-        <h2 className="section-title">
-          Checklist
-          <span className="text-sm font-normal text-neutral-500 ml-2">
-            {checklist.filter((c) => c.checked).length}/{checklist.length} done
-          </span>
-        </h2>
-        <ChecklistEditor items={checklist} onChange={setChecklist} />
-      </section>
-
-      {/* ── Notes ─────────────────────────────────────────── */}
-      <section className="job-form-section">
-        <h2 className="section-title">Work Notes</h2>
+        <h2 className="section-title">Summary Notes</h2>
+        <p className="text-sm text-neutral-500 mb-2">
+          Appears on the inspection report cover page. Add more detail on the job page after saving.
+        </p>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="fp-input min-h-25 resize-y"
-          placeholder="Describe work performed, parts used, issues found…"
+          placeholder="Replaced corroded supply lines. Pressure tested at 80 PSI — no leaks detected."
           maxLength={5000}
         />
       </section>
 
-      {/* ── Photos ────────────────────────────────────────── */}
       <section className="job-form-section">
         <h2 className="section-title">
-          Photos
-          <span className="text-sm font-normal text-neutral-500 ml-2">
-            optional — up to 20
-          </span>
+          Before Photos
+          <span className="text-sm font-normal text-neutral-500 ml-2">optional</span>
         </h2>
         <PhotoUpload
           businessId={session.business?.id ?? ""}
-          photos={photos}
-          onChange={setPhotos}
+          photos={beforePhotos}
+          onChange={setBeforePhotos}
+          storagePrefix="before"
         />
       </section>
 
-      {/* ── Submit ────────────────────────────────────────── */}
+      <section className="job-form-section">
+        <h2 className="section-title">
+          After Photos
+          <span className="text-sm font-normal text-neutral-500 ml-2">optional</span>
+        </h2>
+        <PhotoUpload
+          businessId={session.business?.id ?? ""}
+          photos={afterPhotos}
+          onChange={setAfterPhotos}
+          storagePrefix="after"
+        />
+      </section>
+
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
@@ -320,7 +301,7 @@ export default function JobForm({ session, customers }: JobFormProps) {
           className="btn btn-primary flex items-center gap-2"
         >
           {submitting && <Spinner size="sm" />}
-          {submitting ? "Saving…" : "Save Job"}
+          {submitting ? "Saving…" : "Create Job"}
         </button>
         <a href="/jobs" className="btn btn-outline">
           Cancel

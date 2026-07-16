@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
+import { getJobTitle, normalizeJob } from "@/lib/job-utils";
 import { ClipboardList, Plus } from "lucide-react";
 import type { Job } from "@/types";
 
@@ -22,13 +23,15 @@ export default async function JobsPage({
     return <p className="text-neutral-500">No business profile found.</p>;
   }
 
-  const query = adminDb
+  const snap = await adminDb
     .collection("jobs")
     .where("businessId", "==", session.business.id)
-    .orderBy("createdAt", "desc");
+    .limit(200)
+    .get();
 
-  const snap = await query.limit(200).get();
-  let jobs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Job));
+  let jobs = snap.docs
+    .map((d) => normalizeJob({ id: d.id, ...d.data() } as Job))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   if (status === "completed" || status === "draft") {
     jobs = jobs.filter((j) => j.status === status);
@@ -84,7 +87,7 @@ export default async function JobsPage({
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Job Type</th>
+                  <th>Job</th>
                   <th>Address</th>
                   <th>Tech</th>
                   <th>Date</th>
@@ -97,7 +100,7 @@ export default async function JobsPage({
                 {jobs.map((job) => (
                   <tr key={job.id}>
                     <td className="font-medium">{job.customerName || "—"}</td>
-                    <td>{job.jobType}</td>
+                    <td>{getJobTitle(job)}</td>
                     <td className="text-neutral-500 max-w-xs truncate">
                       {job.jobAddress || "—"}
                     </td>

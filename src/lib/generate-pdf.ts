@@ -6,343 +6,528 @@ import {
   StandardFonts,
   type PDFPage,
   type PDFFont,
+  type RGB,
 } from "pdf-lib";
-import type { Business, Job } from "@/types";
+import type { Business, Job, JobPhoto } from "@/types";
+import { getCompletedDate, getJobTitle, normalizeJobPhotos } from "@/lib/job-utils";
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// US Letter — 8.5" × 11"
+const PAGE_W = 612;
+const PAGE_H = 792;
+const MARGIN = 54; // 0.75"
+const CONTENT_W = 504; // 7.0"
 
-function hexToRgb(hex: string): [number, number, number] {
+const DEFAULT_ACCENT = "#1E5AA8";
+
+function hexToRgb(hex: string): RGB {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? [
-        parseInt(result[1], 16) / 255,
-        parseInt(result[2], 16) / 255,
-        parseInt(result[3], 16) / 255,
-      ]
-    : [0, 0, 0];
-}
-
-const BRAND   = hexToRgb("#1e40af");
-const SUCCESS = hexToRgb("#15803d");
-const DARK    = hexToRgb("#0f172a");
-const MUTED   = hexToRgb("#475569");
-const LIGHT   = hexToRgb("#e2e8f0");
-const WHITE   = hexToRgb("#ffffff");
-
-interface DrawContext {
-  page: PDFPage;
-  bold: PDFFont;
-  regular: PDFFont;
-  y: number;
-  margin: number;
-  width: number;
-}
-
-function drawHRule(ctx: DrawContext) {
-  const [r, g, b] = LIGHT;
-  ctx.page.drawLine({
-    start: { x: ctx.margin, y: ctx.y },
-    end:   { x: ctx.width - ctx.margin, y: ctx.y },
-    thickness: 0.5,
-    color: rgb(r, g, b),
-  });
-  ctx.y -= 10;
+  if (!result) return rgb(0.12, 0.35, 0.66);
+  return rgb(
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255
+  );
 }
 
 function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-  const words = text.split(" ");
+  const paragraphs = text.split("\n");
   const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const test = current ? `${current} ${word}` : word;
-    if (font.widthOfTextAtSize(test, fontSize) > maxWidth) {
-      if (current) lines.push(current);
-      current = word;
-    } else {
-      current = test;
+  for (const para of paragraphs) {
+    const words = para.split(" ");
+    let current = "";
+    for (const word of words) {
+      const test = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(test, fontSize) > maxWidth) {
+        if (current) lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
     }
+    if (current) lines.push(current);
+    if (para === "" && paragraphs.length > 1) lines.push("");
   }
-  if (current) lines.push(current);
-  return lines;
+  return lines.length ? lines : [""];
 }
 
-// ── Main generator ─────────────────────────────────────────────────────────
+interface PageContext {
+  pdfDoc: PDFDocument;
+  page: PDFPage;
+  bold: PDFFont;
+  regular: PDFFont;
+  italic: PDFFont;
+  accent: RGB;
+  dark: RGB;
+  muted: RGB;
+  lightBorder: RGB;
+  y: number;
+}
 
-export async function generateJobPDF(
-  job: Job,
-  business: Business
-): Promise<Uint8Array> {
-  const pdfDoc    = await PDFDocument.create();
-  const bold      = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const regular   = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const pageW     = 595.28; // A4 width in points
-  const pageH     = 841.89;
-  const margin    = 48;
-  const contentW  = pageW - margin * 2;
+interface ReportMeta {
+  jobTitle: string;
+  business: Business;
+  footerPhone: string;
+}
 
-  let page = pdfDoc.addPage([pageW, pageH]);
-  let y    = pageH - margin;
+async function embedImage(pdfDoc: PDFDocument, url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Image fetch failed");
+  const buf = await res.arrayBuffer();
+  const ct = res.headers.get("content-type") ?? "";
+  return ct.includes("png") ? pdfDoc.embedPng(buf) : pdfDoc.embedJpg(buf);
+}
 
-  const ctx: DrawContext = { page, bold, regular, y, margin, width: pageW };
+function drawFooter(meta: ReportMeta, ctx: PageContext, pageIndex: number, pageCount: number) {
+  const footerY = 28;
+  const footerSize = 8;
+  const gray = rgb(0.4, 0.4, 0.4);
 
-  // ── Header bar ────────────────────────────────────────────────────────────
-  const [br, bg, bb] = BRAND;
-  page.drawRectangle({
-    x: 0, y: pageH - 70,
-    width: pageW, height: 70,
-    color: rgb(br, bg, bb),
+  ctx.page.drawLine({
+    start: { x: MARGIN, y: 40 },
+    end: { x: PAGE_W - MARGIN, y: 40 },
+    thickness: 0.5,
+    color: ctx.lightBorder,
   });
 
-  // Business name in header
-  page.drawText(business.name || "Job Tracker Pro Report", {
-    x: margin, y: pageH - 44,
-    size: 18, font: bold,
-    color: rgb(...WHITE),
-  });
-  page.drawText("Job Completion Report", {
-    x: margin, y: pageH - 60,
-    size: 10, font: regular,
-    color: rgb(0.7, 0.8, 1),
-  });
-
-  // Business contact (top right)
-  const rightX = pageW - margin - 160;
-  if (business.phone) {
-    page.drawText(business.phone, {
-      x: rightX, y: pageH - 40,
-      size: 9, font: regular,
-      color: rgb(...WHITE),
-    });
-  }
-  if (business.email) {
-    page.drawText(business.email, {
-      x: rightX, y: pageH - 52,
-      size: 9, font: regular,
-      color: rgb(...WHITE),
+  if (meta.footerPhone) {
+    ctx.page.drawText(meta.footerPhone, {
+      x: MARGIN,
+      y: footerY,
+      size: footerSize,
+      font: ctx.regular,
+      color: gray,
     });
   }
 
-  // ── Logo (if available) ─────────────────────────────────────────────────
-  if (business.logoUrl) {
-    try {
-      const res     = await fetch(business.logoUrl);
-      const imgBuf  = await res.arrayBuffer();
-      const ct      = res.headers.get("content-type") ?? "";
-      const imgEmbed = ct.includes("png")
-        ? await pdfDoc.embedPng(imgBuf)
-        : await pdfDoc.embedJpg(imgBuf);
-      const dim     = imgEmbed.scale(0.06);
-      page.drawImage(imgEmbed, {
-        x: pageW - margin - dim.width,
-        y: pageH - 70 + (70 - dim.height) / 2,
-        width:  dim.width,
-        height: dim.height,
-      });
-    } catch {
-      // Logo unavailable — skip silently
-    }
-  }
-
-  y = pageH - 90;
-  ctx.y = y;
-
-  // ── Job meta grid ────────────────────────────────────────────────────────
-  const metaItems: [string, string][] = [
-    ["Date",       new Date(job.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })],
-    ["Technician", job.techName],
-    ["Job Type",   job.jobType],
-    ["Status",     job.status.toUpperCase()],
-    ["Customer",   job.customerName],
-    ["Address",    job.jobAddress],
-  ];
-  if (job.customerPhone) metaItems.push(["Customer Phone", job.customerPhone]);
-  if (job.customerEmail) metaItems.push(["Customer Email", job.customerEmail]);
-
-  const colW  = contentW / 2;
-  const metaY   = y;
-  metaItems.forEach(([label, value], i) => {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const x   = margin + col * colW;
-    const ry  = metaY - row * 28;
-
-    page.drawText(label, {
-      x, y: ry,
-      size: 8, font: regular,
-      color: rgb(...MUTED),
-    });
-    page.drawText(value, {
-      x, y: ry - 12,
-      size: 10, font: bold,
-      color: rgb(...DARK),
-    });
+  const centerText = "Generated by Job Tracker";
+  const centerW = ctx.regular.widthOfTextAtSize(centerText, footerSize);
+  ctx.page.drawText(centerText, {
+    x: (PAGE_W - centerW) / 2,
+    y: footerY,
+    size: footerSize,
+    font: ctx.regular,
+    color: gray,
   });
 
-  const metaRows = Math.ceil(metaItems.length / 2);
-  y = metaY - metaRows * 28 - 16;
-  ctx.y = y;
-
-  drawHRule(ctx); y = ctx.y;
-
-  // ── Checklist ────────────────────────────────────────────────────────────
-  page.drawText("COMPLETED CHECKLIST", {
-    x: margin, y,
-    size: 11, font: bold,
-    color: rgb(...BRAND),
+  const pageText = `Page ${pageIndex + 1} of ${pageCount}`;
+  const pageW = ctx.regular.widthOfTextAtSize(pageText, footerSize);
+  ctx.page.drawText(pageText, {
+    x: PAGE_W - MARGIN - pageW,
+    y: footerY,
+    size: footerSize,
+    font: ctx.regular,
+    color: gray,
   });
-  y -= 4;
-  drawHRule({ ...ctx, y }); y -= 10;
-  ctx.y = y;
+}
 
-  for (const item of job.checklist) {
-    if (y < margin + 60) {
-      page = pdfDoc.addPage([pageW, pageH]);
-      y = pageH - margin;
-      ctx.page = page;
-    }
+function drawSectionHeader(ctx: PageContext, meta: ReportMeta, title: string) {
+  ctx.page.drawText(title, {
+    x: MARGIN,
+    y: ctx.y,
+    size: 14,
+    font: ctx.bold,
+    color: ctx.accent,
+  });
+  ctx.y -= 18; // 0.25" spacing below header
+}
 
-    const [cr, cg, cb] = item.checked ? SUCCESS : MUTED;
-    page.drawText(item.checked ? "✓" : "○", {
-      x: margin, y,
-      size: 11, font: bold,
-      color: rgb(cr, cg, cb),
+function drawPageHeader(ctx: PageContext, meta: ReportMeta, logoEmbed: Awaited<ReturnType<typeof embedImage>> | null) {
+  const headerTop = PAGE_H - MARGIN;
+
+  if (logoEmbed) {
+    const maxW = 86.4; // 1.2"
+    const maxH = 36;   // 0.5"
+    const scale = Math.min(maxW / logoEmbed.width, maxH / logoEmbed.height, 1);
+    const w = logoEmbed.width * scale;
+    const h = logoEmbed.height * scale;
+    ctx.page.drawImage(logoEmbed, {
+      x: MARGIN,
+      y: headerTop - h,
+      width: w,
+      height: h,
     });
-    page.drawText(item.item, {
-      x: margin + 18, y,
-      size: 10, font: regular,
-      color: rgb(...DARK),
-    });
-    y -= 18;
   }
 
-  y -= 8;
+  const titleText = meta.jobTitle.length > 60 ? `${meta.jobTitle.slice(0, 57)}…` : meta.jobTitle;
+  const titleW = ctx.regular.widthOfTextAtSize(titleText, 9);
+  ctx.page.drawText(titleText, {
+    x: PAGE_W - MARGIN - titleW,
+    y: headerTop - 10,
+    size: 9,
+    font: ctx.regular,
+    color: ctx.muted,
+  });
 
-  // ── Notes ────────────────────────────────────────────────────────────────
-  if (job.notes?.trim()) {
-    if (y < margin + 80) {
-      page = pdfDoc.addPage([pageW, pageH]);
-      y = pageH - margin;
-      ctx.page = page;
-    }
-    ctx.y = y;
-    drawHRule(ctx); y = ctx.y;
+  ctx.page.drawLine({
+    start: { x: MARGIN, y: headerTop - 20 },
+    end: { x: PAGE_W - MARGIN, y: headerTop - 20 },
+    thickness: 1,
+    color: ctx.accent,
+  });
 
-    page.drawText("TECH NOTES", {
-      x: margin, y,
-      size: 11, font: bold,
-      color: rgb(...BRAND),
+  ctx.y = headerTop - 36;
+}
+
+function fitImageInCell(
+  imgW: number,
+  imgH: number,
+  cellW: number,
+  cellH: number
+): { width: number; height: number } {
+  const scale = Math.min(cellW / imgW, cellH / imgH, 1);
+  return { width: imgW * scale, height: imgH * scale };
+}
+
+async function drawPhotoGrid(
+  ctx: PageContext,
+  meta: ReportMeta,
+  logoEmbed: Awaited<ReturnType<typeof embedImage>> | null,
+  sectionTitle: "BEFORE" | "AFTER",
+  photos: JobPhoto[],
+  emptyMessage: string
+) {
+  const colGap = 18;   // 0.25"
+  const rowGap = 25.2; // 0.35"
+  const cellW = 234;   // 3.25"
+  const cellH = 180;   // 2.5"
+  const perPage = 4;
+
+  if (photos.length === 0) {
+    ctx.page = ctx.pdfDoc.addPage([PAGE_W, PAGE_H]);
+    drawPageHeader(ctx, meta, logoEmbed);
+    drawSectionHeader(ctx, meta, sectionTitle);
+    const msgW = ctx.regular.widthOfTextAtSize(emptyMessage, 10);
+    ctx.page.drawText(emptyMessage, {
+      x: (PAGE_W - msgW) / 2,
+      y: ctx.y - 40,
+      size: 10,
+      font: ctx.regular,
+      color: ctx.muted,
     });
-    y -= 4;
-    drawHRule({ ...ctx, y }); y -= 12;
-    ctx.y = y;
-
-    const noteLines = wrapText(job.notes, regular, 10, contentW);
-    for (const line of noteLines) {
-      if (y < margin + 40) {
-        page = pdfDoc.addPage([pageW, pageH]);
-        y = pageH - margin;
-        ctx.page = page;
-      }
-      page.drawText(line, {
-        x: margin, y,
-        size: 10, font: regular,
-        color: rgb(...DARK),
-      });
-      y -= 16;
-    }
-    y -= 8;
+    ctx.y -= 60;
+    return;
   }
 
-  // ── Photos ───────────────────────────────────────────────────────────────
-  if (job.photos && job.photos.length > 0) {
-    if (y < margin + 120) {
-      page = pdfDoc.addPage([pageW, pageH]);
-      y = pageH - margin;
-      ctx.page = page;
-    }
-    ctx.y = y;
-    drawHRule(ctx); y = ctx.y;
+  let photoIndex = 0;
 
-    page.drawText("JOB PHOTOS", {
-      x: margin, y,
-      size: 11, font: bold,
-      color: rgb(...BRAND),
-    });
-    y -= 4;
-    drawHRule({ ...ctx, y }); y -= 16;
-    ctx.y = y;
+  while (photoIndex < photos.length) {
+    ctx.page = ctx.pdfDoc.addPage([PAGE_W, PAGE_H]);
+    ctx.y = PAGE_H - MARGIN;
+    drawPageHeader(ctx, meta, logoEmbed);
+    drawSectionHeader(ctx, meta, sectionTitle);
 
-    const photoW    = (contentW - 16) / 2;
-    const photoH    = photoW * 0.65;
-    const colGap    = 16;
-    let   photoCol  = 0;
-    let   rowStartY = y;
+    const batch = photos.slice(photoIndex, photoIndex + perPage);
+    const count = batch.length;
 
-    for (const photo of job.photos) {
+    if (count === 1) {
+      const photo = batch[0];
       try {
-        if (photoCol === 0 && y - photoH < margin + 40) {
-          page = pdfDoc.addPage([pageW, pageH]);
-          y = pageH - margin;
-          rowStartY = y;
-          ctx.page = page;
-          page = ctx.page;
-        }
-
-        const res   = await fetch(photo.url);
-        const buf   = await res.arrayBuffer();
-        const ct    = res.headers.get("content-type") ?? "";
-        const img   = ct.includes("png")
-          ? await pdfDoc.embedPng(buf)
-          : await pdfDoc.embedJpg(buf);
-
-        const px = margin + photoCol * (photoW + colGap);
-        const py = rowStartY - photoH;
-
-        page.drawImage(img, { x: px, y: py, width: photoW, height: photoH });
-
+        const img = await embedImage(ctx.pdfDoc, photo.url);
+        const maxW = 360; // 5"
+        const fitted = fitImageInCell(img.width, img.height, maxW, cellH);
+        const x = (PAGE_W - fitted.width) / 2;
+        ctx.page.drawImage(img, {
+          x,
+          y: ctx.y - fitted.height,
+          width: fitted.width,
+          height: fitted.height,
+        });
+        ctx.y -= fitted.height + 8;
         if (photo.caption) {
-          page.drawText(photo.caption.slice(0, 60), {
-            x: px, y: py - 12,
-            size: 8, font: regular,
-            color: rgb(...MUTED),
+          const cap = photo.caption.slice(0, 80);
+          const capW = ctx.italic.widthOfTextAtSize(cap, 9);
+          ctx.page.drawText(cap, {
+            x: (PAGE_W - capW) / 2,
+            y: ctx.y,
+            size: 9,
+            font: ctx.italic,
+            color: ctx.muted,
           });
-        }
-
-        photoCol++;
-        if (photoCol === 2) {
-          photoCol    = 0;
-          rowStartY  -= photoH + 28;
-          y           = rowStartY;
+          ctx.y -= 14;
         }
       } catch {
-        // Photo fetch failed — skip
+        // skip failed image
       }
+    } else if (count === 3) {
+      // row1: 2 photos, row2: 1 centered
+      for (let row = 0; row < 2; row++) {
+        const cols = row === 0 ? 2 : 1;
+        const rowPhotos = row === 0 ? batch.slice(0, 2) : batch.slice(2, 3);
+        let rowY = ctx.y;
+        for (let col = 0; col < rowPhotos.length; col++) {
+          const photo = rowPhotos[col];
+          try {
+            const img = await embedImage(ctx.pdfDoc, photo.url);
+            const fitted = fitImageInCell(img.width, img.height, cellW, cellH);
+            const x =
+              cols === 1
+                ? (PAGE_W - fitted.width) / 2
+                : MARGIN + col * (cellW + colGap) + (cellW - fitted.width) / 2;
+            ctx.page.drawImage(img, {
+              x,
+              y: rowY - fitted.height,
+              width: fitted.width,
+              height: fitted.height,
+            });
+            if (photo.caption) {
+              ctx.page.drawText(photo.caption.slice(0, 60), {
+                x: cols === 1 ? (PAGE_W - ctx.regular.widthOfTextAtSize(photo.caption.slice(0, 60), 9)) / 2 : x,
+                y: rowY - fitted.height - 12,
+                size: 9,
+                font: ctx.italic,
+                color: ctx.muted,
+              });
+            }
+          } catch {
+            // skip
+          }
+        }
+        ctx.y = rowY - cellH - rowGap;
+      }
+    } else {
+      // 2 or 4 — standard 2-column grid
+      const cols = 2;
+      for (let i = 0; i < batch.length; i++) {
+        const photo = batch[i];
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cellX = MARGIN + col * (cellW + colGap);
+        const cellY = ctx.y - row * (cellH + rowGap + 16);
+
+        try {
+          const img = await embedImage(ctx.pdfDoc, photo.url);
+          const fitted = fitImageInCell(img.width, img.height, cellW, cellH);
+          const x = cellX + (cellW - fitted.width) / 2;
+          const y = cellY - fitted.height;
+          ctx.page.drawImage(img, { x, y, width: fitted.width, height: fitted.height });
+          if (photo.caption) {
+            const cap = photo.caption.slice(0, 60);
+            ctx.page.drawText(cap, {
+              x: cellX + (cellW - ctx.italic.widthOfTextAtSize(cap, 9)) / 2,
+              y: y - 12,
+              size: 9,
+              font: ctx.italic,
+              color: ctx.muted,
+            });
+          }
+        } catch {
+          // skip
+        }
+      }
+      const rows = Math.ceil(batch.length / cols);
+      ctx.y -= rows * (cellH + rowGap + 16);
     }
 
-    if (photoCol > 0) y = rowStartY - photoH - 28;
+    photoIndex += batch.length;
+  }
+}
+
+// ── Main generator ───────────────────────────────────────────────────────────
+
+export interface GeneratePdfOptions {
+  includeSignoffPage?: boolean;
+}
+
+export async function generateJobPDF(
+  rawJob: Job,
+  business: Business,
+  options: GeneratePdfOptions = {}
+): Promise<Uint8Array> {
+  const job = rawJob;
+  const { beforePhotos, afterPhotos } = normalizeJobPhotos(job);
+  const accentHex = business.brandColor || DEFAULT_ACCENT;
+  const accent = hexToRgb(accentHex);
+  const dark = rgb(0.2, 0.2, 0.2);
+  const muted = rgb(0.4, 0.4, 0.4);
+  const lightBorder = rgb(0.87, 0.87, 0.87);
+
+  const pdfDoc = await PDFDocument.create();
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const italic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+
+  let logoEmbed: Awaited<ReturnType<typeof embedImage>> | null = null;
+  if (business.logoUrl) {
+    try {
+      logoEmbed = await embedImage(pdfDoc, business.logoUrl);
+    } catch {
+      logoEmbed = null;
+    }
   }
 
-  // ── Footer (every page) ──────────────────────────────────────────────────
+  const jobTitle = getJobTitle(job);
+  const meta: ReportMeta = {
+    jobTitle,
+    business,
+    footerPhone: business.phone || "",
+  };
+
+  // ── Page 1: Cover + Summary ───────────────────────────────────────────────
+  let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+  let y = PAGE_H - MARGIN;
+
+  const ctx: PageContext = {
+    pdfDoc,
+    page,
+    bold,
+    regular,
+    italic,
+    accent,
+    dark,
+    muted,
+    lightBorder,
+    y,
+  };
+
+  // Logo + title row
+  if (logoEmbed) {
+    const maxW = 86.4;
+    const maxH = 36;
+    const scale = Math.min(maxW / logoEmbed.width, maxH / logoEmbed.height, 1);
+    page.drawImage(logoEmbed, {
+      x: MARGIN,
+      y: y - logoEmbed.height * scale,
+      width: logoEmbed.width * scale,
+      height: logoEmbed.height * scale,
+    });
+  }
+
+  const reportTitle = "INSPECTION REPORT";
+  const reportTitleW = bold.widthOfTextAtSize(reportTitle, 18);
+  page.drawText(reportTitle, {
+    x: PAGE_W - MARGIN - reportTitleW,
+    y: y - 14,
+    size: 18,
+    font: bold,
+    color: accent,
+  });
+
+  y -= 57.6; // ~0.8" row + 0.3" spacer
+
+  const completedDate = getCompletedDate(job);
+  const clientLine = job.customerEmail
+    ? `${job.customerName} (${job.customerEmail})`
+    : job.customerName;
+  const preparedBy = business.phone
+    ? `${business.name} — ${business.phone}`
+    : business.name;
+
+  const metaFields: [string, string][] = [
+    ["Job:", `${jobTitle} — ${job.jobAddress || "—"}`],
+    ["Date completed:", completedDate],
+    ["Prepared for:", clientLine],
+    ["Prepared by:", preparedBy],
+  ];
+
+  for (const [label, value] of metaFields) {
+    page.drawText(label, {
+      x: MARGIN,
+      y,
+      size: 10,
+      font: bold,
+      color: dark,
+    });
+    const labelW = bold.widthOfTextAtSize(label, 10);
+    const valueLines = wrapText(value, regular, 10, CONTENT_W - labelW - 8);
+    for (let i = 0; i < valueLines.length; i++) {
+      page.drawText(valueLines[i], {
+        x: MARGIN + labelW + 4,
+        y: y - i * 14,
+        size: 10,
+        font: regular,
+        color: dark,
+      });
+    }
+    y -= Math.max(valueLines.length, 1) * 14 + 6;
+  }
+
+  y -= 4;
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: PAGE_W - MARGIN, y },
+    thickness: 1,
+    color: accent,
+  });
+  y -= 20;
+
+  page.drawText("Summary", {
+    x: MARGIN,
+    y,
+    size: 12,
+    font: bold,
+    color: dark,
+  });
+  y -= 18;
+
+  const summary = job.notes?.trim() || "Work completed as documented in the before and after photos below.";
+  const summaryLines = wrapText(summary, regular, 10, CONTENT_W);
+  for (const line of summaryLines) {
+    page.drawText(line, {
+      x: MARGIN,
+      y,
+      size: 10,
+      font: regular,
+      color: dark,
+    });
+    y -= 14;
+  }
+
+  ctx.y = y;
+
+  // ── Before & After photo pages ────────────────────────────────────────────
+  await drawPhotoGrid(
+    ctx,
+    meta,
+    logoEmbed,
+    "BEFORE",
+    beforePhotos,
+    "No before photos uploaded for this job."
+  );
+
+  await drawPhotoGrid(
+    ctx,
+    meta,
+    logoEmbed,
+    "AFTER",
+    afterPhotos,
+    "No after photos uploaded for this job."
+  );
+
+  // ── Optional sign-off (v1.1) ──────────────────────────────────────────────
+  if (options.includeSignoffPage) {
+    ctx.page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    drawPageHeader(ctx, meta, logoEmbed);
+    drawSectionHeader(ctx, meta, "SIGN-OFF");
+
+    const signoffLines = [
+      "Work completed to customer satisfaction:  [ ] Yes",
+      "",
+      "Technician: _________________________    Date: ______________",
+      "Customer:   _________________________    Date: ______________",
+      "",
+      `Thank you for choosing ${business.name}.`,
+    ];
+    if (business.googleReviewUrl) {
+      signoffLines.push(`Leave us a review: ${business.googleReviewUrl}`);
+    }
+
+    for (const line of signoffLines) {
+      ctx.page.drawText(line, {
+        x: MARGIN,
+        y: ctx.y,
+        size: 10,
+        font: regular,
+        color: dark,
+      });
+      ctx.y -= 16;
+    }
+  }
+
+  // ── Footers on every page ─────────────────────────────────────────────────
   const pageCount = pdfDoc.getPageCount();
   for (let i = 0; i < pageCount; i++) {
     const pg = pdfDoc.getPage(i);
-    pg.drawText(
-      `Report generated by Job Tracker Pro  •  ${new Date(job.createdAt).toLocaleDateString()}  •  Page ${i + 1} of ${pageCount}`,
-      {
-        x: margin,
-        y: 28,
-        size: 8,
-        font: regular,
-        color: rgb(...MUTED),
-      }
-    );
-    // Footer line
-    pg.drawLine({
-      start: { x: margin,      y: 40 },
-      end:   { x: pageW - margin, y: 40 },
-      thickness: 0.4,
-      color: rgb(...LIGHT),
-    });
+    drawFooter(meta, { ...ctx, page: pg }, i, pageCount);
   }
 
   return pdfDoc.save();

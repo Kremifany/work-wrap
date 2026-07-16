@@ -2,6 +2,8 @@
 
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { serverEnv } from "@/lib/env.server";
+import { validateAccessCode, redeemAccessCode } from "@/actions/access-codes";
 import { registerBusinessSchema } from "@/lib/schemas";
 import type { ActionResult, Business } from "@/types";
 import { revalidatePath } from "next/cache";
@@ -40,11 +42,34 @@ export async function registerBusinessAction(
   uid: string,
   ownerName: string,
   businessName: string,
-  email: string
+  email: string,
+  accessCode?: string
 ): Promise<ActionResult<{ businessId: string }>> {
   try {
-    const parsed = registerBusinessSchema.safeParse({ uid, ownerName, businessName, email });
-    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid registration data." };
+    const parsed = registerBusinessSchema.safeParse({
+      uid,
+      ownerName,
+      businessName,
+      email,
+      accessCode,
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid registration data." };
+    }
+
+    if (serverEnv.BETA_ACCESS_REQUIRED) {
+      const codeError = await validateAccessCode(accessCode ?? "");
+      if (codeError) return { success: false, error: codeError };
+    }
+
+    const existingSnap = await adminDb
+      .collection("businesses")
+      .where("ownerId", "==", uid)
+      .limit(1)
+      .get();
+    if (!existingSnap.empty) {
+      return { success: true, data: { businessId: existingSnap.docs[0].id } };
+    }
 
     const now = new Date().toISOString();
     const business: Omit<Business, "id"> = {
@@ -55,15 +80,17 @@ export async function registerBusinessAction(
       logoUrl: "",
       phone: "",
       address: "",
+      brandColor: "#1E5AA8",
+      googleReviewUrl: "",
       plan: "free",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       jobsThisMonth: 0,
+      accessCodeUsed: accessCode?.trim().toUpperCase() ?? null,
       createdAt: now,
     };
     const ref = await adminDb.collection("businesses").add(business);
 
-    // Also create a tech record for the owner
     await adminDb.collection("techs").add({
       businessId: ref.id,
       uid,
@@ -72,6 +99,10 @@ export async function registerBusinessAction(
       phone: "",
       role: "owner",
     });
+
+    if (serverEnv.BETA_ACCESS_REQUIRED && accessCode?.trim()) {
+      await redeemAccessCode(accessCode);
+    }
 
     revalidatePath("/dashboard");
     return { success: true, data: { businessId: ref.id } };

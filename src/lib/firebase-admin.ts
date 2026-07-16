@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getApps, initializeApp, cert, type App } from "firebase-admin/app";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
@@ -9,7 +9,7 @@ import { serverEnv } from "@/lib/env.server";
 
 const firebasePrivateKey = serverEnv.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-const firebaseAdminApp: App =
+const firebaseAdminApp =
   getApps()[0] ??
   initializeApp({
     credential: cert({
