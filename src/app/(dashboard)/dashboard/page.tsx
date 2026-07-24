@@ -70,7 +70,11 @@ export default async function DashboardPage({
   }
 
   const stats = await getStats(session.business.id);
-  const firstName = session.business.ownerName.split(" ")[0];
+  const displayName =
+    session.role === "tech"
+      ? (session.tech?.name ?? session.business.ownerName)
+      : session.business.ownerName;
+  const firstName = displayName.split(" ")[0] || "there";
   const showOnboarding =
     params.onboarding === "1" && !session.business.dashboardOnboardingSeenAt;
   const planLimits = {

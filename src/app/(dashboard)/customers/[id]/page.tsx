@@ -3,9 +3,13 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { getJobTitle, normalizeJob } from "@/lib/job-utils";
-import { EditCustomerForm } from "@/components/CustomerForms";
+import {
+  CustomerServiceAddressesTable,
+  EditCustomerForm,
+} from "@/components/CustomerForms";
+import { normalizeCustomer } from "@/lib/customer-utils";
 import { ArrowLeft } from "lucide-react";
 import type { Customer, Job } from "@/types";
 
@@ -38,7 +42,10 @@ export default async function CustomerDetailPage({
   ]);
 
   if (!custSnap.exists) notFound();
-  const customer = { id: custSnap.id, ...custSnap.data() } as Customer;
+  const customer = normalizeCustomer({
+    id: custSnap.id,
+    ...custSnap.data(),
+  } as Customer);
   if (customer.businessId !== session.business.id) notFound();
 
   const jobs = jobsSnap.docs
@@ -70,13 +77,29 @@ export default async function CustomerDetailPage({
         <EditCustomerForm customer={customer} />
       </div>
 
+      {/* Service addresses subtable */}
+      <div className="card card-padded">
+        <div className="mb-5">
+          <h2 className="font-semibold text-neutral-900">Service Addresses</h2>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            Multiple job site locations linked to this customer.
+          </p>
+        </div>
+        <CustomerServiceAddressesTable customer={customer} />
+      </div>
+
       {/* Job history */}
       <div className="card">
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-          <h2 className="font-semibold text-neutral-900">Job History</h2>
+          <div>
+            <h2 className="font-semibold text-neutral-900">Job History</h2>
+            <p className="text-sm text-neutral-500 mt-0.5">
+              Jobs for this customer, including when the completion report was emailed.
+            </p>
+          </div>
           <Link
             href={`/jobs/new?customerId=${customer.id}`}
-            className="btn btn-primary text-sm px-3 py-1.5"
+            className="btn btn-primary text-sm px-3 py-1.5 shrink-0"
           >
             + New Job
           </Link>
@@ -90,9 +113,10 @@ export default async function CustomerDetailPage({
             <table className="fp-table">
               <thead>
                 <tr>
-                  <th>Job Type</th>
+                  <th>Job</th>
                   <th>Address</th>
-                  <th>Date</th>
+                  <th>Created</th>
+                  <th>Report sent</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
@@ -104,7 +128,16 @@ export default async function CustomerDetailPage({
                     <td className="text-neutral-500 text-sm max-w-xs truncate">
                       {job.jobAddress || "—"}
                     </td>
-                    <td className="text-neutral-500 text-sm">{formatDate(job.createdAt)}</td>
+                    <td className="text-neutral-500 text-sm whitespace-nowrap">
+                      {formatDate(job.createdAt)}
+                    </td>
+                    <td className="text-neutral-500 text-sm whitespace-nowrap">
+                      {job.reportSentAt ? (
+                        <span className="text-success-700">{formatDateTime(job.reportSentAt)}</span>
+                      ) : (
+                        <span className="text-neutral-400">Not sent</span>
+                      )}
+                    </td>
                     <td>
                       <Badge
                         variant={job.status === "completed" ? "success" : "warning"}

@@ -8,3 +8,4 @@ export { Alert } from "./Alert";
 export { Spinner, FullPageSpinner } from "./Spinner";
 export { Checkbox } from "./Checkbox";
 export { Modal } from "./Modal";
+export { PhoneInput } from "./PhoneInput";

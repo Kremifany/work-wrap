@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase-client";
 import { upsertBusinessProfileAction } from "@/actions/businesses";
-import { Alert, Spinner } from "@/components/ui";
+import { Alert, PhoneInput, Spinner } from "@/components/ui";
 import { Camera, Save } from "lucide-react";
-import { initials } from "@/lib/utils";
+import { formatPhoneNumber, initials } from "@/lib/utils";
 import type { SessionContext } from "@/types";
 
 const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
@@ -24,7 +24,7 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
   const [name, setName] = useState(biz?.name ?? "");
   const [ownerName, setOwnerName] = useState(biz?.ownerName ?? "");
   const [email, setEmail] = useState(biz?.email ?? session.user.email);
-  const [phone, setPhone] = useState(biz?.phone ?? "");
+  const [phone, setPhone] = useState(formatPhoneNumber(biz?.phone ?? ""));
   const [address, setAddress] = useState(biz?.address ?? "");
   const [logoUrl, setLogoUrl] = useState(biz?.logoUrl ?? "");
   const [brandColor, setBrandColor] = useState(biz?.brandColor ?? "#1E5AA8");
@@ -189,14 +189,10 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
             <label className="form-label" htmlFor="biz-phone">
               Phone
             </label>
-            <input
+            <PhoneInput
               id="biz-phone"
-              type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="fp-input"
-              maxLength={30}
-              placeholder="(813) 555-0100"
+              onChange={setPhone}
             />
           </div>
           <div className="sm:col-span-2">

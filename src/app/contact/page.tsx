@@ -6,7 +6,7 @@ import { ChevronRight, Mail, MessageSquare, Phone, CheckCircle } from "lucide-re
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Alert } from "@/components/ui/Alert";
+import { Alert, PhoneInput } from "@/components/ui";
 
 const SUBJECTS = [
   "Account / Login Help",
@@ -179,11 +179,9 @@ export default function ContactPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="form-label">Phone (optional)</label>
-                    <Input
-                      type="tel"
+                    <PhoneInput
                       value={form.phone}
-                      onChange={(e) => update("phone", e.target.value)}
-                      placeholder="(813) 555-0100"
+                      onChange={(phone) => update("phone", phone)}
                     />
                   </div>
                   <div>

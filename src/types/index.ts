@@ -37,13 +37,29 @@ export interface Tech {
 }
 
 // ─── Customer ───────────────────────────────────────────────────────────────
+/** One service location linked to a customer (CRM subtable row). */
+export interface CustomerServiceAddress {
+  id: string;
+  /** Optional label, e.g. "Home", "Office", "Rental". */
+  label: string;
+  /** Full street address line. */
+  line1: string;
+  isPrimary: boolean;
+}
+
 export interface Customer {
   id: string;
   businessId: string;
   name: string;
   email: string;
   phone: string;
+  /**
+   * Denormalized primary service address for list views / legacy reads.
+   * Source of truth is `serviceAddresses` (primary row).
+   */
   address: string;
+  /** Multiple service locations for this customer. */
+  serviceAddresses: CustomerServiceAddress[];
   notes: string;
   jobCount: number;
   createdAt: string;
@@ -60,11 +76,20 @@ export interface JobPhoto {
   caption: string;
 }
 
+/** Tech assigned to a job (multi-select). */
+export interface JobAssignedTech {
+  id: string;
+  name: string;
+}
+
 export interface Job {
   id: string;
   businessId: string;
+  /** Primary / first assigned tech — kept for legacy list views. */
   techId: string;
   techName: string;
+  /** All technicians who worked this job. */
+  techs: JobAssignedTech[];
   customerId: string | null;
   customerName: string;
   customerEmail: string;
