@@ -167,7 +167,7 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
               className="fp-input"
               required
               maxLength={100}
-              placeholder="Tampa Pro Garage Doors"
+              placeholder="Your Business Name"
             />
           </div>
           <div>
@@ -220,7 +220,7 @@ export default function ProfilePageClient({ session }: ProfilePageClientProps) {
               onChange={(e) => setAddress(e.target.value)}
               className="fp-input"
               maxLength={300}
-              placeholder="456 Commerce Blvd, Tampa, FL 33602"
+              placeholder="456 Commerce Blvd, Anytown, USA"
             />
           </div>
           <div>

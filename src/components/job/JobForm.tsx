@@ -384,7 +384,7 @@ export default function JobForm({
                   value={jobAddress}
                   onChange={(e) => setJobAddress(e.target.value)}
                   className="fp-input mt-2"
-                  placeholder="123 Main St, Tampa, FL 33602"
+                  placeholder="123 Main St, Anytown, USA"
                   required
                   maxLength={300}
                 />
@@ -401,7 +401,7 @@ export default function JobForm({
                 value={jobAddress}
                 onChange={(e) => setJobAddress(e.target.value)}
                 className="fp-input"
-                placeholder="123 Main St, Tampa, FL 33602"
+                placeholder="123 Main St, Anytown, USA"
                 maxLength={300}
               />
               {customerMode === "existing" && selectedCustomerId && (

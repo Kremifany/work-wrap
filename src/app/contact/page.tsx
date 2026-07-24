@@ -98,8 +98,8 @@ export default function ContactPage() {
               <li className="flex items-start gap-3">
                 <MessageSquare className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
                 <div>
-                  <p className="font-semibold text-slate-800">Tampa Bay–Based Team</p>
-                  <p className="text-sm text-slate-500">We understand your local market</p>
+                  <p className="font-semibold text-slate-800">Real Human Support</p>
+                  <p className="text-sm text-slate-500">We understand field service workflows</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -236,7 +236,7 @@ export default function ContactPage() {
           <Link href="/login"   className="hover:text-white">Sign In</Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a> product. Tampa Bay, FL.
+          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a> product.
         </p>
       </footer>
     </div>

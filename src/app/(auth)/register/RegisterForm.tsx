@@ -226,7 +226,7 @@ function RegisterFormInner() {
         <Input
           label="Business Name"
           type="text"
-          placeholder="Tampa Bay HVAC Pros"
+          placeholder="Acme HVAC Pros"
           value={businessName}
           onChange={(e) => setBusinessName(e.target.value)}
           required

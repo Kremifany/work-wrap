@@ -58,7 +58,7 @@ const faqs = [
   { q: "Do I need to install anything?",           a: "No. Job Tracker Pro is 100% web-based. Your techs open a link on their phone — no app store needed." },
   { q: "Which industries does Job Tracker Pro support?",a: "HVAC, garage door, plumbing, electrical, and general service — with built-in checklist templates for each." },
   { q: "Is it really free?",                        a: "Yes. The Free plan includes 5 jobs per month and 1 technician. Perfect for getting started." },
-  { q: "Do you serve Tampa Bay businesses?",        a: "Job Tracker Pro was designed with Tampa Bay, St. Petersburg, and Clearwater service businesses in mind. Your local market, your local needs." },
+  { q: "Where can I use Job Tracker Pro?", a: "Anywhere. Job Tracker Pro works for service businesses of any size — HVAC, garage door, plumbing, electrical, and more — in any city or country with a phone and internet." },
 ];
 
 export default function LandingPage() {
@@ -88,7 +88,7 @@ export default function LandingPage() {
             <div className="mb-6 flex items-center justify-center gap-3">
               <div className="h-px w-8 bg-brand-700 sm:w-14" />
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
-                Built for Tampa Bay Service Businesses
+                Built for Service Businesses Everywhere
               </span>
               <div className="h-px w-8 bg-brand-700 sm:w-14" />
             </div>
@@ -121,7 +121,7 @@ export default function LandingPage() {
         <div className="border-y border-slate-100 bg-slate-50 py-4">
           <p className="text-center text-sm font-medium text-slate-500">
             Trusted by service companies across{" "}
-            <span className="font-semibold text-slate-700">Tampa · St. Petersburg · Clearwater · Bradenton · Sarasota</span>
+            <span className="font-semibold text-slate-700">HVAC · Garage Door · Plumbing · Electrical · General Trades</span>
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="text-center">
               <h2 className="page-title">Everything Your Team Needs</h2>
-              <p className="mt-3 text-lg text-slate-500">Designed for techs in the field — simple enough to use after a sweaty job in Florida heat.</p>
+              <p className="mt-3 text-lg text-slate-500">Designed for techs in the field — simple enough to use after a long job in any weather.</p>
             </div>
             <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {features.map(({ Icon, title, desc }) => (
@@ -167,22 +167,22 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Tampa Bay focus */}
+        {/* Who it's for */}
         <section className="px-4 py-20">
           <div className="mx-auto max-w-4xl">
             <div className="rounded-2xl bg-linear-to-br from-brand-900 to-brand-800 p-8 text-white sm:p-12">
               <h2 className="text-3xl font-bold leading-tight">
-                Built for Tampa Bay&apos;s Best Service Professionals
+                Built for Service Pros Everywhere
               </h2>
               <p className="mt-4 max-w-xl text-lg leading-relaxed text-brand-200">
-                Florida homeowners expect professionalism. When your HVAC tech in Pinellas County
-                sends a branded PDF report the moment the job is done, you stand out from every
-                other contractor. No more &quot;Did they actually check everything?&quot; callbacks.
+                Homeowners and commercial clients expect professionalism. When your tech sends a
+                branded PDF report the moment the job is done, you stand out from every other
+                contractor. No more &quot;Did they actually check everything?&quot; callbacks.
               </p>
               <ul className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {["Tampa & Hillsborough County","St. Petersburg & Pinellas County","Clearwater Beach to Wesley Chapel","Bradenton, Sarasota & surrounding areas"].map((city) => (
-                  <li key={city} className="flex items-center gap-2 text-brand-200">
-                    <CheckCircle className="h-4 w-4 text-success-700 shrink-0" />{city}
+                {["HVAC & refrigeration","Garage door & access systems","Plumbing & drain services","Electrical & general trades"].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-brand-200">
+                    <CheckCircle className="h-4 w-4 text-success-700 shrink-0" />{item}
                   </li>
                 ))}
               </ul>
@@ -222,7 +222,7 @@ export default function LandingPage() {
         <section className="px-4 py-20 text-center">
           <h2 className="page-title">Ready to Impress Every Customer?</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
-            Join Tampa Bay service businesses already saving time and winning more referrals with Job Tracker Pro.
+            Join service businesses already saving time and winning more referrals with Job Tracker Pro.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link href="/register" prefetch><Button size="lg">Create Free Account <ChevronRight className="h-4 w-4" /></Button></Link>
@@ -239,7 +239,7 @@ export default function LandingPage() {
                   <span className="text-lg font-bold text-white">Job Tracker</span>
                   <span className="text-lg font-bold text-accent-500">Pro</span>
                 </div>
-                <p className="mt-2 text-sm text-slate-400">Job completion reports for Tampa Bay service businesses.</p>
+                <p className="mt-2 text-sm text-slate-400">Job completion reports for service businesses everywhere.</p>
                 <p className="mt-1 text-xs text-slate-500">By <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a></p>
                 <Link href="/contact" className="mt-3 flex items-center gap-2 text-sm text-slate-400 hover:text-white">
                   <Phone className="h-4 w-4" /> Contact Support
@@ -271,7 +271,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs text-slate-500">
-              © {new Date().getFullYear()} Job Tracker Pro by <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clip Logic LLC</a>. Serving Tampa, St. Petersburg, Clearwater, and the greater Tampa Bay area.
+              © {new Date().getFullYear()} Job Tracker Pro by <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clip Logic LLC</a>. Built for service businesses everywhere.
             </div>
           </div>
         </footer>

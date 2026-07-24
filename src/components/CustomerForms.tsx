@@ -389,7 +389,7 @@ export function CustomerServiceAddressesTable({ customer }: { customer: Customer
                 value={draftLine1}
                 onChange={(e) => setDraftLine1(e.target.value)}
                 className="fp-input"
-                placeholder="123 Main St, Tampa, FL 33602"
+                placeholder="123 Main St, Anytown, USA"
                 maxLength={500}
                 required
               />
@@ -562,7 +562,7 @@ function ServiceAddressDraftRows({
                   onChange(next);
                 }}
                 className="fp-input"
-                placeholder="123 Main St, Tampa, FL 33602"
+                placeholder="123 Main St, Anytown, USA"
                 maxLength={500}
               />
             </div>
