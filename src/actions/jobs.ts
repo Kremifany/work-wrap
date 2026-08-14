@@ -6,13 +6,13 @@ import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
 import { generateJobPDF } from "@/lib/generate-pdf";
 import { sendReportEmail } from "@/lib/send-report-email";
-import { normalizeJob } from "@/lib/job-utils";
+import { normalizeJob, getReportFilename } from "@/lib/job-utils";
 import {
   createJobSchema,
   completeJobUpdatesSchema,
   updateJobSchema,
 } from "@/lib/schemas";
-import type { ActionResult, ChecklistItem, Job, JobPhoto, JobType } from "@/types";
+import type { ActionResult, ChecklistItem, Job, JobAssignedTech, JobPhoto, JobType } from "@/types";
 
 // ── Plan-limit check ─────────────────────────────────────────────────────────
 
@@ -48,17 +48,61 @@ async function loadOwnedJob(jobId: string, businessId: string): Promise<Job | nu
   return job;
 }
 
+/**
+ * Customer CRM is the source of truth for contact email/phone/name.
+ * Jobs only copy those fields for display/PDF; many jobs share one customer email.
+ */
+async function resolveJobWithCustomerContact(job: Job): Promise<Job> {
+  if (!job.customerId) return job;
+
+  const snap = await adminDb.collection("customers").doc(job.customerId).get();
+  if (!snap.exists) return job;
+
+  const customer = snap.data() as {
+    businessId?: string;
+    email?: string;
+    phone?: string;
+    name?: string;
+  };
+  if (customer.businessId !== job.businessId) return job;
+
+  const email = (customer.email ?? "").trim();
+  const phone = (customer.phone ?? "").trim();
+  const name = (customer.name ?? "").trim();
+
+  const patch: Record<string, string> = {};
+  if (email && email !== (job.customerEmail ?? "").trim()) patch.customerEmail = email;
+  if (phone && phone !== (job.customerPhone ?? "").trim()) patch.customerPhone = phone;
+  if (name && name !== (job.customerName ?? "").trim()) patch.customerName = name;
+
+  if (Object.keys(patch).length > 0) {
+    await adminDb.collection("jobs").doc(job.id).update(patch);
+  }
+
+  return {
+    ...job,
+    customerEmail: email || job.customerEmail,
+    customerPhone: phone || job.customerPhone,
+    customerName: name || job.customerName,
+  };
+}
+
 async function savePdfToStorage(
   businessId: string,
   jobId: string,
-  pdfBytes: Uint8Array
+  pdfBytes: Uint8Array,
+  filename: string
 ): Promise<string> {
   const bucket = adminStorage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
   const filePath = `reports/${businessId}/${jobId}/report.pdf`;
   const file = bucket.file(filePath);
+  const safeName = filename.replace(/["\\\r\n]/g, "") || "jobtracker-report.pdf";
   await file.save(Buffer.from(pdfBytes), {
     contentType: "application/pdf",
     resumable: false,
+    metadata: {
+      contentDisposition: `inline; filename="${safeName}"`,
+    },
   });
   await file.makePublic();
   return file.publicUrl();
@@ -91,6 +135,7 @@ function buildJobPayload(input: {
 export interface CreateJobInput {
   techId: string;
   techName: string;
+  techs: JobAssignedTech[];
   customerId: string | null;
   customerName: string;
   customerEmail: string;
@@ -120,11 +165,14 @@ export async function createJobAction(
     const limitError = await checkJobLimit(session.business.id, session.business.plan);
     if (limitError) return { success: false, error: limitError };
 
+    const techs = parsed.data.techs;
+    const primary = techs[0];
     const now = new Date().toISOString();
     const jobData: Omit<Job, "id"> = {
       businessId: session.business.id,
-      techId: input.techId,
-      techName: input.techName,
+      techId: primary.id,
+      techName: primary.name,
+      techs,
       customerId: input.customerId,
       customerName: input.customerName,
       customerEmail: input.customerEmail,
@@ -159,7 +207,16 @@ export async function createJobAction(
 export async function updateJobAction(
   jobId: string,
   updates: Partial<
-    Pick<Job, "title" | "jobAddress" | "checklist" | "notes" | "beforePhotos" | "afterPhotos">
+    Pick<
+      Job,
+      | "title"
+      | "jobAddress"
+      | "checklist"
+      | "notes"
+      | "beforePhotos"
+      | "afterPhotos"
+      | "techs"
+    >
   >
 ): Promise<ActionResult> {
   try {
@@ -182,6 +239,12 @@ export async function updateJobAction(
     if (updates.jobAddress !== undefined) patch.jobAddress = updates.jobAddress;
     if (updates.checklist !== undefined) patch.checklist = updates.checklist;
     if (updates.notes !== undefined) patch.notes = updates.notes;
+    if (updates.techs !== undefined) {
+      const techs = updates.techs;
+      patch.techs = techs;
+      patch.techId = techs[0]?.id ?? "";
+      patch.techName = techs[0]?.name ?? "";
+    }
     if (updates.beforePhotos !== undefined) {
       patch.beforePhotos = updates.beforePhotos;
       patch.photos = [
@@ -244,7 +307,12 @@ export async function generateReportAction(
     }
 
     const pdfBytes = await generateJobPDF(finalJob, session.business);
-    const pdfUrl = await savePdfToStorage(session.business.id, jobId, pdfBytes);
+    const pdfUrl = await savePdfToStorage(
+      session.business.id,
+      jobId,
+      pdfBytes,
+      getReportFilename(finalJob)
+    );
 
     await adminDb.collection("jobs").doc(jobId).update({ pdfUrl });
 
@@ -258,14 +326,21 @@ export async function generateReportAction(
 
 // ── Send report email ────────────────────────────────────────────────────────
 
-export async function sendReportAction(jobId: string): Promise<ActionResult> {
+export async function sendReportAction(
+  jobId: string
+): Promise<ActionResult<{ emailedTo: string }>> {
   try {
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
 
-    const job = await loadOwnedJob(jobId, session.business.id);
-    if (!job) return { success: false, error: "Job not found." };
-    if (!job.customerEmail) return { success: false, error: "No customer email on file." };
+    const loaded = await loadOwnedJob(jobId, session.business.id);
+    if (!loaded) return { success: false, error: "Job not found." };
+
+    // Prefer CRM customer email (one per customer) over stale job snapshot
+    const job = await resolveJobWithCustomerContact(loaded);
+    if (!job.customerEmail?.trim()) {
+      return { success: false, error: "No customer email on file. Update the customer in CRM." };
+    }
 
     const business = session.business;
     const pdfBytes = await generateJobPDF(job, business);
@@ -276,12 +351,12 @@ export async function sendReportAction(jobId: string): Promise<ActionResult> {
       reportSentAt: sentAt,
       status: "completed",
       completedAt: job.completedAt ?? sentAt,
-      pdfUrl: job.pdfUrl ?? (await savePdfToStorage(business.id, jobId, pdfBytes)),
+      pdfUrl: job.pdfUrl ?? (await savePdfToStorage(business.id, jobId, pdfBytes, getReportFilename(job))),
     });
 
     revalidatePath(`/jobs/${jobId}`);
     revalidatePath("/jobs");
-    return { success: true };
+    return { success: true, data: { emailedTo: job.customerEmail.trim() } };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to send report.";
     return { success: false, error: msg };
@@ -301,10 +376,12 @@ export async function completeJobAction(
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
 
-    const job = await loadOwnedJob(jobId, session.business.id);
-    if (!job) return { success: false, error: "Job not found." };
+    const loaded = await loadOwnedJob(jobId, session.business.id);
+    if (!loaded) return { success: false, error: "Job not found." };
 
-    if (job.customerEmail) {
+    const job = await resolveJobWithCustomerContact(loaded);
+
+    if (job.customerEmail?.trim()) {
       const pdfBytes = await generateJobPDF(job, session.business);
       await sendReportEmail({ job, business: session.business, pdfBuffer: pdfBytes });
       const completedAt = new Date().toISOString();

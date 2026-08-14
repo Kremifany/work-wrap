@@ -9,7 +9,8 @@ import {
   type RGB,
 } from "pdf-lib";
 import type { Business, Job, JobPhoto } from "@/types";
-import { getCompletedDate, getJobTitle, normalizeJobPhotos } from "@/lib/job-utils";
+import { getCompletedDate, getJobTechniciansLabel, getJobTitle, normalizeJobPhotos } from "@/lib/job-utils";
+import { formatPhoneNumber } from "@/lib/utils";
 
 // US Letter — 8.5" × 11"
 const PAGE_W = 612;
@@ -359,7 +360,7 @@ export async function generateJobPDF(
   const meta: ReportMeta = {
     jobTitle,
     business,
-    footerPhone: business.phone || "",
+    footerPhone: business.phone ? formatPhoneNumber(business.phone) : "",
   };
 
   // ── Page 1: Cover + Summary ───────────────────────────────────────────────
@@ -379,23 +380,26 @@ export async function generateJobPDF(
     y,
   };
 
-  // Logo + title row
+  // Logo + title row (title left-aligned)
+  let titleX = MARGIN;
   if (logoEmbed) {
     const maxW = 86.4;
     const maxH = 36;
     const scale = Math.min(maxW / logoEmbed.width, maxH / logoEmbed.height, 1);
+    const logoW = logoEmbed.width * scale;
+    const logoH = logoEmbed.height * scale;
     page.drawImage(logoEmbed, {
       x: MARGIN,
-      y: y - logoEmbed.height * scale,
-      width: logoEmbed.width * scale,
-      height: logoEmbed.height * scale,
+      y: y - logoH,
+      width: logoW,
+      height: logoH,
     });
+    titleX = MARGIN + logoW + 12;
   }
 
-  const reportTitle = "INSPECTION REPORT";
-  const reportTitleW = bold.widthOfTextAtSize(reportTitle, 18);
+  const reportTitle = "JOB COMPLETION REPORT";
   page.drawText(reportTitle, {
-    x: PAGE_W - MARGIN - reportTitleW,
+    x: titleX,
     y: y - 14,
     size: 18,
     font: bold,
@@ -409,7 +413,7 @@ export async function generateJobPDF(
     ? `${job.customerName} (${job.customerEmail})`
     : job.customerName;
   const preparedBy = business.phone
-    ? `${business.name} — ${business.phone}`
+    ? `${business.name} — ${formatPhoneNumber(business.phone)}`
     : business.name;
 
   const metaFields: [string, string][] = [
@@ -417,6 +421,7 @@ export async function generateJobPDF(
     ["Date completed:", completedDate],
     ["Prepared for:", clientLine],
     ["Prepared by:", preparedBy],
+    ["Technicians:", getJobTechniciansLabel(job)],
   ];
 
   for (const [label, value] of metaFields) {

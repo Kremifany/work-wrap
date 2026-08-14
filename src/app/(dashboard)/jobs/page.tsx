@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { getJobTitle, normalizeJob } from "@/lib/job-utils";
+import { getJobTitle, getJobTechniciansLabel, getReportFilename, normalizeJob } from "@/lib/job-utils";
 import { ClipboardList, Plus } from "lucide-react";
 import type { Job } from "@/types";
 
@@ -89,7 +89,7 @@ export default async function JobsPage({
                   <th>Customer</th>
                   <th>Job</th>
                   <th>Address</th>
-                  <th>Tech</th>
+                  <th>Techs</th>
                   <th>Date</th>
                   <th>Status</th>
                   <th>Report</th>
@@ -104,7 +104,7 @@ export default async function JobsPage({
                     <td className="text-neutral-500 max-w-xs truncate">
                       {job.jobAddress || "—"}
                     </td>
-                    <td className="text-neutral-500">{job.techName || "—"}</td>
+                    <td className="text-neutral-500">{getJobTechniciansLabel(job)}</td>
                     <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
                     <td>
                       <Badge
@@ -117,6 +117,7 @@ export default async function JobsPage({
                       {job.pdfUrl ? (
                         <a
                           href={job.pdfUrl}
+                          download={getReportFilename(job)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-brand-600 hover:text-brand-700 text-sm font-medium"

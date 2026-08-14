@@ -4,15 +4,15 @@ import { CheckCircle, X, ChevronRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Pricing – Plans for Tampa Bay Service Businesses | Job Tracker Pro",
+  title: "Pricing – Plans for Service Businesses | Job Tracker Pro",
   description:
-    "Job Tracker Pro plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses across Tampa Bay, FL.",
+    "Job Tracker Pro plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses everywhere.",
   alternates: {
     canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
   },
   openGraph: {
-    title:       "Job Tracker Pro Pricing – Free to $99/month for Tampa Bay Service Businesses",
-    description: "Start free. Upgrade when you grow. Simple, honest pricing for HVAC, garage door, plumbing, and electrical teams across Tampa, St. Pete, and Clearwater.",
+    title:       "Job Tracker Pro Pricing – Free to $99/month for Service Businesses",
+    description: "Start free. Upgrade when you grow. Simple, honest pricing for HVAC, garage door, plumbing, and electrical teams.",
     url:         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
     type:        "website",
   },
@@ -108,7 +108,7 @@ export default function PricingPage() {
       {/* Header */}
       <section className="px-4 py-16 text-center">
         <h1 className="page-title text-4xl">
-          Simple, Honest Pricing for Tampa Bay Service Businesses
+          Simple, Honest Pricing for Service Businesses
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
           Start free. Upgrade when your business grows. No surprise fees.
@@ -171,8 +171,8 @@ export default function PricingPage() {
         {/* Comparison note */}
         <p className="mt-10 text-center text-sm text-slate-500">
           All plans include secure PDF storage, Firestore database, and email delivery via Resend.
-          Prices are competitive with national tools like Jobber and Housecall Pro — but{" "}
-          <strong className="text-slate-700">built specifically for Tampa Bay market budgets</strong>.
+          Prices are competitive with national tools like Jobber and Housecall Pro — built for
+          service teams of any size, anywhere.
         </p>
       </section>
 

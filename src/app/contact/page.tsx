@@ -6,7 +6,7 @@ import { ChevronRight, Mail, MessageSquare, Phone, CheckCircle } from "lucide-re
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Alert } from "@/components/ui/Alert";
+import { Alert, PhoneInput } from "@/components/ui";
 
 const SUBJECTS = [
   "Account / Login Help",
@@ -98,8 +98,8 @@ export default function ContactPage() {
               <li className="flex items-start gap-3">
                 <MessageSquare className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
                 <div>
-                  <p className="font-semibold text-slate-800">Tampa Bay–Based Team</p>
-                  <p className="text-sm text-slate-500">We understand your local market</p>
+                  <p className="font-semibold text-slate-800">Real Human Support</p>
+                  <p className="text-sm text-slate-500">We understand field service workflows</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -179,11 +179,9 @@ export default function ContactPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="form-label">Phone (optional)</label>
-                    <Input
-                      type="tel"
+                    <PhoneInput
                       value={form.phone}
-                      onChange={(e) => update("phone", e.target.value)}
-                      placeholder="(813) 555-0100"
+                      onChange={(phone) => update("phone", phone)}
                     />
                   </div>
                   <div>
@@ -238,7 +236,7 @@ export default function ContactPage() {
           <Link href="/login"   className="hover:text-white">Sign In</Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a> product. Tampa Bay, FL.
+          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a> product.
         </p>
       </footer>
     </div>

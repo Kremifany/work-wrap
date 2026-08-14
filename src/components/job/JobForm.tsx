@@ -5,38 +5,112 @@ import { useRouter } from "next/navigation";
 import { createJobAction } from "@/actions/jobs";
 import { createCustomerAction } from "@/actions/customers";
 import PhotoUpload from "./PhotoUpload";
-import { Alert, Spinner } from "@/components/ui";
-import type { Customer, JobPhoto, SessionContext } from "@/types";
+import { JobTechMultiSelect } from "./JobTechMultiSelect";
+import { Alert, PhoneInput, Spinner } from "@/components/ui";
+import {
+  getPrimaryAddress,
+  getPrimaryAddressLine,
+  normalizeCustomer,
+} from "@/lib/customer-utils";
+import type { Customer, JobPhoto, SessionContext, Tech } from "@/types";
 
 interface JobFormProps {
   session: SessionContext;
   customers: Customer[];
+  techs: Tech[];
+  initialCustomerId?: string;
+  initialJobAddress?: string;
 }
 
 type CustomerMode = "existing" | "new";
+const CUSTOM_ADDRESS_VALUE = "__custom__";
 
-export default function JobForm({ session, customers }: JobFormProps) {
+function addressOptionLabel(label: string, line1: string, isPrimary: boolean): string {
+  const name = label.trim() || (isPrimary ? "Primary" : "Address");
+  return `${name} — ${line1}`;
+}
+
+export default function JobForm({
+  session,
+  customers,
+  techs,
+  initialCustomerId,
+  initialJobAddress,
+}: JobFormProps) {
   const router = useRouter();
+  const normalizedCustomers = customers.map((c) => normalizeCustomer(c));
+
+  const defaultTechIds = (() => {
+    if (techs.length === 0) return [];
+    const selfId =
+      session.tech?.id ??
+      techs.find((t) => t.uid === session.user.uid)?.id ??
+      techs.find((t) => t.role === "owner")?.id ??
+      techs[0]?.id;
+    return selfId ? [selfId] : [techs[0].id];
+  })();
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTechIds, setSelectedTechIds] = useState<string[]>(defaultTechIds);
 
   const [customerMode, setCustomerMode] = useState<CustomerMode>(
-    customers.length > 0 ? "existing" : "new"
+    normalizedCustomers.length > 0 || initialCustomerId ? "existing" : "new"
   );
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
+    initialCustomerId ?? ""
+  );
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
 
   const [title, setTitle] = useState("");
-  const [jobAddress, setJobAddress] = useState("");
+  const [jobAddress, setJobAddress] = useState(initialJobAddress ?? "");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>(() => {
+    if (!initialCustomerId) return "";
+    const cust = normalizedCustomers.find((c) => c.id === initialCustomerId);
+    if (!cust) return "";
+    if (initialJobAddress) {
+      const match = cust.serviceAddresses.find(
+        (a) => a.line1.trim().toLowerCase() === initialJobAddress.trim().toLowerCase()
+      );
+      if (match) return match.id;
+    }
+    return getPrimaryAddress(cust)?.id ?? "";
+  });
   const [notes, setNotes] = useState("");
   const [beforePhotos, setBeforePhotos] = useState<JobPhoto[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<JobPhoto[]>([]);
 
+  const selectedCustomer = normalizedCustomers.find((c) => c.id === selectedCustomerId);
+  const customerAddresses = selectedCustomer?.serviceAddresses ?? [];
+  const showAddressPicker =
+    customerMode === "existing" && !!selectedCustomerId && customerAddresses.length > 0;
+  const usingCustomAddress =
+    !showAddressPicker ||
+    selectedAddressId === CUSTOM_ADDRESS_VALUE ||
+    !selectedAddressId;
+
+  const applyCustomerAddresses = (customerId: string) => {
+    const cust = normalizedCustomers.find((c) => c.id === customerId);
+    if (!cust) {
+      setSelectedAddressId("");
+      setJobAddress("");
+      return;
+    }
+    const primary = getPrimaryAddress(cust);
+    if (primary) {
+      setSelectedAddressId(primary.id);
+      setJobAddress(primary.line1);
+      return;
+    }
+    setSelectedAddressId(CUSTOM_ADDRESS_VALUE);
+    setJobAddress(getPrimaryAddressLine(cust));
+  };
+
   const getCustomerDetails = () => {
     if (customerMode === "existing") {
-      const cust = customers.find((c) => c.id === selectedCustomerId);
+      const cust = normalizedCustomers.find((c) => c.id === selectedCustomerId);
       return {
         customerId: cust?.id ?? null,
         customerName: cust?.name ?? "",
@@ -68,6 +142,26 @@ export default function JobForm({ session, customers }: JobFormProps) {
       return;
     }
 
+    const assignedTechs =
+      techs.length > 0
+        ? techs
+            .filter((t) => selectedTechIds.includes(t.id))
+            .map((t) => ({ id: t.id, name: t.name }))
+        : [
+            {
+              id: session.tech?.id ?? session.user.uid,
+              name:
+                session.role === "owner"
+                  ? (session.business?.ownerName ?? "Owner")
+                  : (session.tech?.name ?? "Technician"),
+            },
+          ];
+
+    if (assignedTechs.length === 0) {
+      setError("Select at least one technician who worked this job.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -80,20 +174,18 @@ export default function JobForm({ session, customers }: JobFormProps) {
           address: jobAddress.trim(),
           notes: "",
         });
-        if (newCustResult.success && newCustResult.data) {
-          resolvedCustomerId = (newCustResult.data as { customerId: string }).customerId;
+        if (!newCustResult.success || !newCustResult.data) {
+          setError(newCustResult.error ?? "Failed to save customer to CRM.");
+          return;
         }
+        resolvedCustomerId = (newCustResult.data as { customerId: string }).customerId;
       }
 
-      const techId = session.tech?.id ?? session.user.uid;
-      const techName =
-        session.role === "owner"
-          ? (session.business?.ownerName ?? "")
-          : (session.tech?.name ?? "");
-
+      const primary = assignedTechs[0];
       const result = await createJobAction({
-        techId,
-        techName,
+        techId: primary.id,
+        techName: primary.name,
+        techs: assignedTechs,
         customerId: resolvedCustomerId,
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
@@ -136,7 +228,14 @@ export default function JobForm({ session, customers }: JobFormProps) {
               <button
                 key={mode}
                 type="button"
-                onClick={() => setCustomerMode(mode)}
+                onClick={() => {
+                  setCustomerMode(mode);
+                  if (mode === "new") {
+                    setSelectedAddressId(CUSTOM_ADDRESS_VALUE);
+                  } else if (selectedCustomerId) {
+                    applyCustomerAddresses(selectedCustomerId);
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                   customerMode === mode
                     ? "bg-brand-700 text-white border-brand-700"
@@ -157,12 +256,16 @@ export default function JobForm({ session, customers }: JobFormProps) {
             <select
               id="customer-select"
               value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSelectedCustomerId(id);
+                applyCustomerAddresses(id);
+              }}
               className="fp-input"
               required
             >
               <option value="">— Choose a customer —</option>
-              {customers.map((c) => (
+              {normalizedCustomers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} {c.email ? `(${c.email})` : ""}
                 </option>
@@ -205,18 +308,26 @@ export default function JobForm({ session, customers }: JobFormProps) {
               <label className="form-label" htmlFor="cust-phone">
                 Phone
               </label>
-              <input
+              <PhoneInput
                 id="cust-phone"
-                type="tel"
                 value={newCustomerPhone}
-                onChange={(e) => setNewCustomerPhone(e.target.value)}
-                className="fp-input"
-                placeholder="(813) 555-0100"
-                maxLength={30}
+                onChange={setNewCustomerPhone}
               />
             </div>
           </div>
         )}
+      </section>
+
+      <section className="job-form-section">
+        <h2 className="section-title">Technicians</h2>
+        <p className="text-sm text-neutral-500 mb-3">
+          Select everyone who worked on this job. They appear on the completion report.
+        </p>
+        <JobTechMultiSelect
+          techs={techs}
+          selectedIds={selectedTechIds}
+          onChange={setSelectedTechIds}
+        />
       </section>
 
       <section className="job-form-section">
@@ -237,27 +348,77 @@ export default function JobForm({ session, customers }: JobFormProps) {
               maxLength={200}
             />
           </div>
-          <div>
-            <label className="form-label" htmlFor="job-address">
-              Service address
-            </label>
-            <input
-              id="job-address"
-              type="text"
-              value={jobAddress}
-              onChange={(e) => setJobAddress(e.target.value)}
-              className="fp-input"
-              placeholder="123 Oak St, Tampa FL 33602"
-              maxLength={300}
-            />
-          </div>
+
+          {showAddressPicker ? (
+            <div>
+              <label className="form-label" htmlFor="job-address-select">
+                Service address <span className="text-error-500">*</span>
+              </label>
+              <select
+                id="job-address-select"
+                value={selectedAddressId || CUSTOM_ADDRESS_VALUE}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedAddressId(id);
+                  if (id === CUSTOM_ADDRESS_VALUE) {
+                    setJobAddress("");
+                    return;
+                  }
+                  const addr = customerAddresses.find((a) => a.id === id);
+                  setJobAddress(addr?.line1 ?? "");
+                }}
+                className="fp-input"
+                required
+              >
+                {customerAddresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {addressOptionLabel(a.label, a.line1, a.isPrimary)}
+                  </option>
+                ))}
+                <option value={CUSTOM_ADDRESS_VALUE}>Other / custom address…</option>
+              </select>
+              {usingCustomAddress && (
+                <input
+                  id="job-address"
+                  type="text"
+                  value={jobAddress}
+                  onChange={(e) => setJobAddress(e.target.value)}
+                  className="fp-input mt-2"
+                  placeholder="123 Main St, Anytown, USA"
+                  required
+                  maxLength={300}
+                />
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="form-label" htmlFor="job-address">
+                Service address
+              </label>
+              <input
+                id="job-address"
+                type="text"
+                value={jobAddress}
+                onChange={(e) => setJobAddress(e.target.value)}
+                className="fp-input"
+                placeholder="123 Main St, Anytown, USA"
+                maxLength={300}
+              />
+              {customerMode === "existing" && selectedCustomerId && (
+                <p className="mt-1 text-sm text-neutral-500">
+                  This customer has no saved addresses yet. Enter one here, or add
+                  addresses on their customer page.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       <section className="job-form-section">
         <h2 className="section-title">Summary Notes</h2>
         <p className="text-sm text-neutral-500 mb-2">
-          Appears on the inspection report cover page. Add more detail on the job page after saving.
+          Appears on the job completion report cover page. Add more detail on the job page after saving.
         </p>
         <textarea
           value={notes}

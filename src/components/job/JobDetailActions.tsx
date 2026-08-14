@@ -10,9 +10,10 @@ import {
   deleteJobAction,
 } from "@/actions/jobs";
 import PhotoUpload from "@/components/job/PhotoUpload";
+import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
-import { normalizeJobPhotos, getJobTitle } from "@/lib/job-utils";
+import { normalizeJobPhotos, getJobTitle, getReportFilename, normalizeJobTechs } from "@/lib/job-utils";
 import {
   CheckCircle2,
   RefreshCw,
@@ -22,14 +23,19 @@ import {
   Mail,
   Eye,
 } from "lucide-react";
-import type { Job, JobPhoto, SessionContext } from "@/types";
+import type { Job, JobPhoto, SessionContext, Tech } from "@/types";
 
 interface JobDetailActionsProps {
   job: Job;
   session: SessionContext;
+  techs: Tech[];
 }
 
-export default function JobDetailActions({ job: initialJob, session }: JobDetailActionsProps) {
+export default function JobDetailActions({
+  job: initialJob,
+  session,
+  techs,
+}: JobDetailActionsProps) {
   const router = useRouter();
   const { beforePhotos: initialBefore, afterPhotos: initialAfter } =
     normalizeJobPhotos(initialJob);
@@ -37,6 +43,9 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
   const [notes, setNotes] = useState(initialJob.notes ?? "");
   const [beforePhotos, setBeforePhotos] = useState<JobPhoto[]>(initialBefore);
   const [afterPhotos, setAfterPhotos] = useState<JobPhoto[]>(initialAfter);
+  const [selectedTechIds, setSelectedTechIds] = useState<string[]>(() =>
+    normalizeJobTechs(initialJob).map((t) => t.id)
+  );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
@@ -53,8 +62,8 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const skipAutoSaveRef = useRef(true);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const updatesRef = useRef({ notes, beforePhotos, afterPhotos });
-  updatesRef.current = { notes, beforePhotos, afterPhotos };
+  const updatesRef = useRef({ notes, beforePhotos, afterPhotos, selectedTechIds });
+  updatesRef.current = { notes, beforePhotos, afterPhotos, selectedTechIds };
 
   const [generating, startGenerate] = useTransition();
   const [sending, startSend] = useTransition();
@@ -64,11 +73,30 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
   const isDraft = initialJob.status === "draft";
   const businessId = session.business?.id ?? "";
 
+  const resolveSelectedTechs = (ids: string[]) => {
+    const fromTeam = techs
+      .filter((t) => ids.includes(t.id))
+      .map((t) => ({ id: t.id, name: t.name }));
+    if (fromTeam.length > 0) return fromTeam;
+    return normalizeJobTechs(initialJob);
+  };
+
   const getUpdates = () => ({
     notes: notes.trim(),
     beforePhotos,
     afterPhotos,
   });
+
+  const persistTechsIfNeeded = async () => {
+    const assigned = resolveSelectedTechs(selectedTechIds);
+    if (assigned.length === 0) {
+      throw new Error("Select at least one technician who worked this job.");
+    }
+    const result = await updateJobAction(initialJob.id, { techs: assigned });
+    if (!result.success) {
+      throw new Error(result.error ?? "Failed to save technicians.");
+    }
+  };
 
   const persistUpdates = useCallback(async () => {
     if (autoSaveTimerRef.current) {
@@ -76,19 +104,34 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
       autoSaveTimerRef.current = null;
     }
 
-    const { notes: n, beforePhotos: before, afterPhotos: after } = updatesRef.current;
+    const {
+      notes: n,
+      beforePhotos: before,
+      afterPhotos: after,
+      selectedTechIds: techIds,
+    } = updatesRef.current;
+
+    const assigned = techs
+      .filter((t) => techIds.includes(t.id))
+      .map((t) => ({ id: t.id, name: t.name }));
+    if (assigned.length === 0 && techs.length > 0) {
+      setSaveStatus("error");
+      throw new Error("Select at least one technician.");
+    }
+
     setSaveStatus("saving");
     const result = await updateJobAction(initialJob.id, {
       notes: n.trim(),
       beforePhotos: before,
       afterPhotos: after,
+      ...(assigned.length > 0 ? { techs: assigned } : {}),
     });
     if (!result.success) {
       setSaveStatus("error");
       throw new Error(result.error ?? "Failed to save job.");
     }
     setSaveStatus("saved");
-  }, [initialJob.id]);
+  }, [initialJob.id, techs]);
 
   useEffect(() => {
     if (!isDraft) return;
@@ -111,11 +154,17 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [notes, beforePhotos, afterPhotos, isDraft, persistUpdates]);
+  }, [notes, beforePhotos, afterPhotos, selectedTechIds, isDraft, persistUpdates]);
 
   const handleGenerate = () => {
     setError(null);
     startGenerate(async () => {
+      try {
+        await persistTechsIfNeeded();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save technicians.");
+        return;
+      }
       const result = await generateReportAction(initialJob.id, getUpdates());
       if (!result.success) {
         setError(result.error ?? "Failed to generate report.");
@@ -125,7 +174,7 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
           setPreviewUrl(url);
           setShowPreview(true);
         }
-        setSuccess("Inspection report PDF generated.");
+        setSuccess("Job completion report PDF generated.");
         router.refresh();
       }
     });
@@ -135,21 +184,57 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
     setError(null);
     startSend(async () => {
       if (isDraft) {
-        await persistUpdates();
+        try {
+          await persistUpdates();
+          await persistTechsIfNeeded();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to save job.");
+          return;
+        }
       }
       const result = await sendReportAction(initialJob.id);
       if (!result.success) {
         setError(result.error ?? "Failed to send report.");
       } else {
-        setSuccess(`Report emailed to ${initialJob.customerEmail}.`);
+        const emailedTo =
+          (result.data as { emailedTo?: string } | undefined)?.emailedTo ??
+          initialJob.customerEmail;
+        setSuccess(`Report emailed to ${emailedTo}.`);
         router.refresh();
       }
     });
   };
 
+  const handleDownloadPdf = async () => {
+    if (!pdfUrl) return;
+    setError(null);
+    try {
+      const res = await fetch(pdfUrl);
+      if (!res.ok) throw new Error("Download failed.");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = getReportFilename(initialJob);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Cross-origin / CORS fallback — open storage URL (may use storage path name)
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const handleComplete = () => {
     setError(null);
     startComplete(async () => {
+      try {
+        await persistTechsIfNeeded();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save technicians.");
+        return;
+      }
       const result = await completeJobAction(initialJob.id, getUpdates());
       if (!result.success) {
         setError(result.error ?? "Failed to complete job.");
@@ -187,6 +272,20 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
 
       {isDraft && (
         <>
+          <div className="card card-padded space-y-3">
+            <div>
+              <h2 className="font-semibold text-neutral-900">Technicians</h2>
+              <p className="text-sm text-neutral-500 mt-0.5">
+                Who worked this job — shown on the completion report.
+              </p>
+            </div>
+            <JobTechMultiSelect
+              techs={techs}
+              selectedIds={selectedTechIds}
+              onChange={setSelectedTechIds}
+            />
+          </div>
+
           <div className="card card-padded space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-neutral-900">Work Notes</h2>
@@ -204,7 +303,7 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="fp-input min-h-25 resize-y"
-              placeholder="Summary of work performed — appears on the inspection report cover page."
+              placeholder="Summary of work performed — appears on the job completion report cover page."
               maxLength={5000}
             />
           </div>
@@ -275,15 +374,14 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
         {!isDraft && (
           <>
             {pdfUrl && (
-              <a
-                href={pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
                 className="btn btn-outline flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 Download PDF
-              </a>
+              </button>
             )}
             {pdfUrl && (
               <button
@@ -328,7 +426,7 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
           <h2 className="font-semibold text-neutral-900 mb-3">Report Preview</h2>
           <iframe
             src={pdfUrl}
-            title={`Inspection report — ${getJobTitle(initialJob)}`}
+            title={`Job completion report — ${getJobTitle(initialJob)}`}
             className="w-full h-[600px] rounded-lg border border-neutral-200"
           />
         </div>
@@ -343,7 +441,7 @@ export default function JobDetailActions({ job: initialJob, session }: JobDetail
         {pdfUrl ? (
           <iframe
             src={pdfUrl}
-            title={`Inspection report — ${getJobTitle(initialJob)}`}
+            title={`Job completion report — ${getJobTitle(initialJob)}`}
             className="w-full h-[70vh] rounded-lg border border-neutral-200"
           />
         ) : null}

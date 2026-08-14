@@ -4,6 +4,14 @@ import { z } from "zod";
 
 const nonEmptyString = (max: number) => z.string().trim().min(1).max(max);
 const optionalString = (max: number) => z.string().trim().max(max).optional();
+/** Empty string or a valid email — CRM contacts often start phone-only. */
+const optionalEmail = z
+  .string()
+  .trim()
+  .max(254)
+  .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
+    message: "Invalid email address",
+  });
 
 // ─── Job schemas ──────────────────────────────────────────────────────────────
 
@@ -20,9 +28,18 @@ export const jobPhotoSchema = z.object({
 export const createJobSchema = z.object({
   techId:        nonEmptyString(128),
   techName:      nonEmptyString(100),
+  techs: z
+    .array(
+      z.object({
+        id:   nonEmptyString(128),
+        name: nonEmptyString(100),
+      })
+    )
+    .min(1, "Select at least one technician.")
+    .max(25),
   customerId:    z.string().trim().max(128).nullable(),
   customerName:  nonEmptyString(200),
-  customerEmail: z.string().trim().email().max(254),
+  customerEmail: optionalEmail,
   customerPhone: z.string().trim().max(30),
   title:         nonEmptyString(200),
   jobType:       z.enum(["Garage Door", "HVAC", "General"]).optional(),
@@ -45,19 +62,44 @@ export const completeJobUpdatesSchema = z.object({
 export const updateJobSchema = completeJobUpdatesSchema.extend({
   title:      nonEmptyString(200).optional(),
   jobAddress: z.string().trim().max(500).optional(),
+  techs: z
+    .array(
+      z.object({
+        id:   nonEmptyString(128),
+        name: nonEmptyString(100),
+      })
+    )
+    .min(1)
+    .max(25)
+    .optional(),
 });
 
 // ─── Customer schema ──────────────────────────────────────────────────────────
 
+export const customerServiceAddressSchema = z.object({
+  id:        z.string().trim().max(128).optional(),
+  label:     z.string().trim().max(80).optional().default(""),
+  line1:     nonEmptyString(500),
+  isPrimary: z.boolean().optional().default(false),
+});
+
 export const customerInputSchema = z.object({
   name:    nonEmptyString(200),
-  email:   z.string().trim().email().max(254),
+  email:   optionalEmail,
   phone:   z.string().trim().max(30),
-  address: z.string().trim().max(500),
+  /** @deprecated Prefer serviceAddresses — kept for JobForm / legacy callers. */
+  address: z.string().trim().max(500).optional().default(""),
+  serviceAddresses: z.array(customerServiceAddressSchema).max(25).optional(),
   notes:   optionalString(2000),
 });
 
 export const updateCustomerSchema = customerInputSchema.partial();
+
+export const customerAddressInputSchema = z.object({
+  label:     z.string().trim().max(80).optional().default(""),
+  line1:     nonEmptyString(500),
+  isPrimary: z.boolean().optional().default(false),
+});
 
 // ─── Business schema ──────────────────────────────────────────────────────────
 

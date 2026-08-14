@@ -10,35 +10,34 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "Job Tracker Pro – Job Completion Reports for Tampa Bay Service Businesses",
+    default: "Job Tracker Pro – Job Completion Reports for Service Businesses",
     template: "%s | Job Tracker Pro",
   },
   description:
-    "Auto-generate branded PDF job completion reports and email them to customers instantly. Built for HVAC, garage door, plumbing, and electrical teams across Tampa, St. Petersburg, and the greater Tampa Bay area.",
+    "Auto-generate branded PDF job completion reports and email them to customers instantly. Built for HVAC, garage door, plumbing, electrical, and general service teams everywhere.",
   keywords: [
-    "job completion report software Tampa",
-    "HVAC job report app St Petersburg FL",
-    "garage door service report Tampa Bay",
-    "field service report software Florida",
-    "digital job forms plumbing Tampa",
-    "work order completion app Clearwater",
-    "technician report software Hillsborough County",
-    "Pinellas County HVAC service reports",
-    "field service management app Florida",
-    "service technician app Tampa Bay",
-    "work order software small business Florida",
-    "contractor job tracking app Tampa",
+    "job completion report software",
+    "HVAC job report app",
+    "garage door service report",
+    "field service report software",
+    "digital job forms plumbing",
+    "work order completion app",
+    "technician report software",
+    "field service management app",
+    "service technician app",
+    "work order software small business",
+    "contractor job tracking app",
     "digital service report app HVAC",
     "garage door technician report app",
     "plumber job report software",
-    "electrical contractor report app Florida",
+    "electrical contractor report app",
     "job tracker app for service businesses",
-    "free field service app Florida",
+    "free field service app",
   ],
   openGraph: {
     type:        "website",
     siteName:    "Job Tracker Pro",
-    title:       "Job Tracker Pro – Job Completion Reports for Tampa Bay Service Businesses",
+    title:       "Job Tracker Pro – Job Completion Reports for Service Businesses",
     description: "Auto-generate branded PDF reports and email them to customers the moment the job is done. Free for small teams.",
     url:         APP_URL,
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Job Tracker Pro by ClipLogic" }],
@@ -54,42 +53,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // LocalBusiness schema — signals physical market focus to Google
-  const localBusinessSchema = {
-    "@context": "https://schema.org",
-    "@type":    "ProfessionalService",
-    name:       "Job Tracker Pro",
-    description: "Job completion report software and field service app for Tampa Bay HVAC, garage door, plumbing, and electrical businesses.",
-    url:        APP_URL,
-    address: {
-      "@type":           "PostalAddress",
-      addressLocality:   "Tampa",
-      addressRegion:     "FL",
-      addressCountry:    "US",
-    },
-    geo: {
-      "@type":    "GeoCoordinates",
-      latitude:   27.9506,
-      longitude:  -82.4572,
-    },
-    areaServed: [
-      { "@type": "City",   name: "Tampa",              addressRegion: "FL" },
-      { "@type": "City",   name: "St. Petersburg",     addressRegion: "FL" },
-      { "@type": "City",   name: "Clearwater",         addressRegion: "FL" },
-      { "@type": "City",   name: "Bradenton",          addressRegion: "FL" },
-      { "@type": "City",   name: "Sarasota",           addressRegion: "FL" },
-      { "@type": "City",   name: "Wesley Chapel",      addressRegion: "FL" },
-      { "@type": "City",   name: "Lakeland",           addressRegion: "FL" },
-      { "@type": "County", name: "Hillsborough County",addressRegion: "FL" },
-      { "@type": "County", name: "Pinellas County",    addressRegion: "FL" },
-      { "@type": "County", name: "Manatee County",     addressRegion: "FL" },
-      { "@type": "State",  name: "Florida",            addressRegion: "FL" },
-    ],
-    priceRange: "$-$$$",
-    sameAs: [ "https://cliplogicpro.com" ],
-  };
-
-  // SoftwareApplication schema — price range (no hardcoded single price per SEO best practice)
+  // Software product schema — national / worldwide service businesses
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type":    "SoftwareApplication",
@@ -105,14 +69,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     },
     description: metadata.description,
     url:         APP_URL,
-    areaServed: [
-      { "@type": "City", name: "Tampa",          addressRegion: "FL", addressCountry: "US" },
-      { "@type": "City", name: "St. Petersburg", addressRegion: "FL", addressCountry: "US" },
-      { "@type": "City", name: "Clearwater",     addressRegion: "FL", addressCountry: "US" },
-      { "@type": "City", name: "Bradenton",      addressRegion: "FL", addressCountry: "US" },
-      { "@type": "City", name: "Sarasota",       addressRegion: "FL", addressCountry: "US" },
-      { "@type": "City", name: "Wesley Chapel",  addressRegion: "FL", addressCountry: "US" },
-    ],
+    areaServed: {
+      "@type": "Country",
+      name:    "United States",
+    },
+    audience: {
+      "@type": "Audience",
+      audienceType: "Service businesses, contractors, and field technicians",
+    },
     publisher: {
       "@type": "Organization",
       name:    "Clip Logic LLC",
@@ -157,7 +121,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify([softwareSchema, orgSchema, websiteSchema, localBusinessSchema]) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify([softwareSchema, orgSchema, websiteSchema]) }}
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

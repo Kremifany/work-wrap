@@ -3,7 +3,8 @@ import "server-only";
 import { Resend } from "resend";
 import { serverEnv } from "./env.server";
 import { logger } from "./logger";
-import { getCompletedDate, getJobTitle, getReportFilename } from "@/lib/job-utils";
+import { getCompletedDate, getJobTechniciansLabel, getJobTitle, getReportFilename } from "@/lib/job-utils";
+import { formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import type { Business, Job } from "@/types";
 
 const resend = new Resend(serverEnv.RESEND_API_KEY);
@@ -36,7 +37,7 @@ export async function sendReportEmail({
   }
 
   const fromAddress = formatFromAddress(business.name);
-  const subject = `Your inspection report — ${jobTitle}`;
+  const subject = `Your job completion report — ${jobTitle}`;
 
   const html = `
 <!DOCTYPE html>
@@ -46,14 +47,14 @@ export async function sendReportEmail({
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
     <div style="background:#1E5AA8;padding:28px 32px;">
       <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${business.name}</h1>
-      <p style="margin:4px 0 0;color:rgba(255,255,255,.85);font-size:14px;">Inspection Report Ready</p>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,.85);font-size:14px;">Job Completion Report Ready</p>
     </div>
     <div style="padding:32px;">
       <p style="margin:0 0 16px;font-size:16px;color:#333;">
         Hi ${job.customerName},
       </p>
       <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
-        Your inspection report for <strong>${jobTitle}</strong> at ${job.jobAddress || "your property"} is attached.
+        Your job completion report for <strong>${jobTitle}</strong> at ${job.jobAddress || "your property"} is attached.
         It includes before and after photos plus a summary of the work completed on ${dateStr}.
       </p>
       <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:24px;">
@@ -69,6 +70,10 @@ export async function sendReportEmail({
           <tr>
             <td style="padding:6px 0;color:#475569;">Date completed</td>
             <td style="padding:6px 0;color:#333;font-weight:500;">${dateStr}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#475569;">Technicians</td>
+            <td style="padding:6px 0;color:#333;font-weight:500;">${getJobTechniciansLabel(job)}</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#475569;">Prepared by</td>
@@ -87,7 +92,7 @@ export async function sendReportEmail({
       <p style="margin:0;font-size:14px;color:#475569;line-height:1.6;">
         Questions? Contact ${business.name}${
           business.phone
-            ? ` at <a href="tel:${business.phone}" style="color:#1E5AA8;">${business.phone}</a>`
+            ? ` at <a href="tel:${phoneTelHref(business.phone)}" style="color:#1E5AA8;">${formatPhoneNumber(business.phone)}</a>`
             : business.email
               ? ` at <a href="mailto:${business.email}" style="color:#1E5AA8;">${business.email}</a>`
               : ""

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addTechAction, removeTechAction } from "@/actions/team";
-import { Alert, Badge, Modal, Spinner } from "@/components/ui";
+import { Alert, Badge, Modal, PhoneInput, Spinner } from "@/components/ui";
+import { formatPhoneNumber } from "@/lib/utils";
 import { UserCheck, UserPlus, Trash2 } from "lucide-react";
 import type { PlanType, Tech } from "@/types";
 
@@ -156,7 +157,7 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
                   </div>
                   <p className="text-sm text-neutral-500 mt-0.5">
                     {tech.email}
-                    {tech.phone ? ` · ${tech.phone}` : ""}
+                    {tech.phone ? ` · ${formatPhoneNumber(tech.phone)}` : ""}
                   </p>
                 </div>
                 {tech.role !== "owner" && (
@@ -234,14 +235,7 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
             <label className="form-label" htmlFor="t-phone">
               Phone
             </label>
-            <input
-              id="t-phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="fp-input"
-              maxLength={30}
-            />
+            <PhoneInput id="t-phone" value={phone} onChange={setPhone} />
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <button

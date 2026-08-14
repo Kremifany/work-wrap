@@ -2,12 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
-import { normalizeJob, normalizeJobPhotos, getJobTitle } from "@/lib/job-utils";
+import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel } from "@/lib/job-utils";
 import { Badge } from "@/components/ui";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import JobDetailActions from "@/components/job/JobDetailActions";
 import { ArrowLeft, Calendar } from "lucide-react";
-import type { Job } from "@/types";
+import type { Job, Tech } from "@/types";
 
 export async function generateMetadata({
   params,
@@ -15,7 +15,20 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `Job ${id.slice(0, 6)} | Job Tracker Pro` };
+  try {
+    const snap = await adminDb.collection("jobs").doc(id).get();
+    if (!snap.exists) {
+      return { title: "Job" };
+    }
+    const job = normalizeJob({ id: snap.id, ...snap.data() } as Job);
+    const jobTitle = getJobTitle(job);
+    const customer = job.customerName?.trim();
+    return {
+      title: customer ? `${jobTitle} — ${customer}` : jobTitle,
+    };
+  } catch {
+    return { title: "Job" };
+  }
 }
 
 export default async function JobDetailPage({
@@ -27,11 +40,43 @@ export default async function JobDetailPage({
 
   if (!session.business) notFound();
 
-  const snap = await adminDb.collection("jobs").doc(id).get();
+  const [snap, techsSnap] = await Promise.all([
+    adminDb.collection("jobs").doc(id).get(),
+    adminDb
+      .collection("techs")
+      .where("businessId", "==", session.business.id)
+      .get(),
+  ]);
   if (!snap.exists) notFound();
 
   const job = normalizeJob({ id: snap.id, ...snap.data() } as Job);
   if (job.businessId !== session.business.id) notFound();
+
+  const teamTechs = techsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Tech))
+    .sort((a, b) => {
+      if (a.role === "owner" && b.role !== "owner") return -1;
+      if (b.role === "owner" && a.role !== "owner") return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  // Display CRM contact (one email per customer); job address stays per-job
+  if (job.customerId) {
+    const customerSnap = await adminDb.collection("customers").doc(job.customerId).get();
+    if (customerSnap.exists) {
+      const customer = customerSnap.data() as {
+        businessId?: string;
+        email?: string;
+        phone?: string;
+        name?: string;
+      };
+      if (customer.businessId === session.business.id) {
+        if (customer.email?.trim()) job.customerEmail = customer.email.trim();
+        if (customer.phone?.trim()) job.customerPhone = customer.phone.trim();
+        if (customer.name?.trim()) job.customerName = customer.name.trim();
+      }
+    }
+  }
 
   const { beforePhotos, afterPhotos } = normalizeJobPhotos(job);
   const jobTitle = getJobTitle(job);
@@ -85,8 +130,8 @@ export default async function JobDetailPage({
             <dt className="text-neutral-500 font-medium">Phone</dt>
             <dd>
               {job.customerPhone ? (
-                <a href={`tel:${job.customerPhone}`} className="text-brand-600 hover:underline">
-                  {job.customerPhone}
+                <a href={`tel:${phoneTelHref(job.customerPhone)}`} className="text-brand-600 hover:underline">
+                  {formatPhoneNumber(job.customerPhone)}
                 </a>
               ) : (
                 "—"
@@ -98,8 +143,10 @@ export default async function JobDetailPage({
             <dd className="text-neutral-900">{job.jobAddress || "—"}</dd>
           </div>
           <div>
-            <dt className="text-neutral-500 font-medium">Technician</dt>
-            <dd className="text-neutral-900">{job.techName || "—"}</dd>
+            <dt className="text-neutral-500 font-medium">
+              {(job.techs?.length ?? 0) > 1 ? "Technicians" : "Technician"}
+            </dt>
+            <dd className="text-neutral-900">{getJobTechniciansLabel(job)}</dd>
           </div>
           {job.completedAt && (
             <div>
@@ -116,7 +163,7 @@ export default async function JobDetailPage({
         </dl>
       </div>
 
-      <JobDetailActions job={job} session={session} />
+      <JobDetailActions job={job} session={session} techs={teamTechs} />
 
       {job.status === "completed" && (beforePhotos.length > 0 || afterPhotos.length > 0) && (
         <div className="space-y-6">
