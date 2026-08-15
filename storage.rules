@@ -1,0 +1,28 @@
+rules_version = '2';
+// Deploy: firebase deploy --only storage
+// Job photos are uploaded via /api/upload/job-photo (Admin SDK) so they bypass
+// these rules. Client uploads (e.g. logo) still need request.auth.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Authenticated users can manage files under their auth uid path (logos).
+    match /businesses/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 15 * 1024 * 1024;
+    }
+
+    // Public read for report PDFs / job photos written by Admin SDK.
+    match /reports/{businessId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /businesses/{businessId}/jobs/{fileName} {
+      allow read: if true;
+      // Writes go through the Next.js upload API (Admin SDK).
+      allow write: if false;
+    }
+  }
+}

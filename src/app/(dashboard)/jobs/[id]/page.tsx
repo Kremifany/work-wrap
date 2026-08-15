@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
-import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel } from "@/lib/job-utils";
+import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, canEditJob } from "@/lib/job-utils";
 import { Badge } from "@/components/ui";
 import { formatDate, formatDateTime, formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import JobDetailActions from "@/components/job/JobDetailActions";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { ArrowLeft, Calendar, Pencil } from "lucide-react";
 import type { Job, Tech } from "@/types";
 
 export async function generateMetadata({
@@ -80,6 +80,8 @@ export default async function JobDetailPage({
 
   const { beforePhotos, afterPhotos } = normalizeJobPhotos(job);
   const jobTitle = getJobTitle(job);
+  const canEdit = canEditJob(session, job);
+  const canEditDetails = canEdit && job.status === "draft";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -105,6 +107,15 @@ export default async function JobDetailPage({
             </span>
           </div>
         </div>
+        {canEditDetails && (
+          <Link
+            href={`/jobs/${job.id}/edit`}
+            className="btn btn-outline flex items-center gap-2"
+          >
+            <Pencil className="w-4 h-4" />
+            Edit Job
+          </Link>
+        )}
       </div>
 
       <div className="card card-padded">
@@ -163,7 +174,12 @@ export default async function JobDetailPage({
         </dl>
       </div>
 
-      <JobDetailActions job={job} session={session} techs={teamTechs} />
+      <JobDetailActions
+        job={job}
+        session={session}
+        techs={teamTechs}
+        canEdit={canEdit}
+      />
 
       {job.status === "completed" && (beforePhotos.length > 0 || afterPhotos.length > 0) && (
         <div className="space-y-6">

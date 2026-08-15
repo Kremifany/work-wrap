@@ -62,6 +62,10 @@ export const completeJobUpdatesSchema = z.object({
 export const updateJobSchema = completeJobUpdatesSchema.extend({
   title:      nonEmptyString(200).optional(),
   jobAddress: z.string().trim().max(500).optional(),
+  customerId: z.string().trim().max(128).nullable().optional(),
+  customerName: nonEmptyString(200).optional(),
+  customerEmail: optionalEmail.optional(),
+  customerPhone: z.string().trim().max(30).optional(),
   techs: z
     .array(
       z.object({
@@ -99,6 +103,13 @@ export const customerAddressInputSchema = z.object({
   label:     z.string().trim().max(80).optional().default(""),
   line1:     nonEmptyString(500),
   isPrimary: z.boolean().optional().default(false),
+});
+
+export const addCustomerInteractionSchema = z.object({
+  type: z.enum(["note", "call", "sms_logged"]),
+  body: nonEmptyString(5000),
+  to:   z.string().trim().max(254).optional().default(""),
+  jobId: z.string().trim().max(128).nullable().optional(),
 });
 
 // ─── Business schema ──────────────────────────────────────────────────────────

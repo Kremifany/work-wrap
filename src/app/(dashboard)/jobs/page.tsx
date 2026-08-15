@@ -3,43 +3,151 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { getJobTitle, getJobTechniciansLabel, getReportFilename, normalizeJob } from "@/lib/job-utils";
-import { ClipboardList, Plus } from "lucide-react";
-import type { Job } from "@/types";
+import {
+  getJobTitle,
+  getJobTechniciansLabel,
+  getReportFilename,
+  jobIncludesTech,
+  normalizeJob,
+} from "@/lib/job-utils";
+import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardList, Plus, X } from "lucide-react";
+import type { Job, Tech } from "@/types";
 
 export const metadata = { title: "Jobs | Job Tracker Pro" };
+
+type SortKey =
+  | "customer"
+  | "job"
+  | "type"
+  | "address"
+  | "techs"
+  | "date"
+  | "status";
+
+type SortDir = "asc" | "desc";
+
+const SORT_KEYS = new Set<SortKey>([
+  "customer",
+  "job",
+  "type",
+  "address",
+  "techs",
+  "date",
+  "status",
+]);
+
+function parseSort(raw: string | undefined): SortKey {
+  if (raw && SORT_KEYS.has(raw as SortKey)) return raw as SortKey;
+  return "date";
+}
+
+function parseDir(raw: string | undefined, sort: SortKey): SortDir {
+  if (raw === "asc" || raw === "desc") return raw;
+  return sort === "date" ? "desc" : "asc";
+}
+
+function sortValue(job: Job, key: SortKey): string {
+  switch (key) {
+    case "customer":
+      return (job.customerName || "").toLowerCase();
+    case "job":
+      return getJobTitle(job).toLowerCase();
+    case "type":
+      return (job.jobType || "General").toLowerCase();
+    case "address":
+      return (job.jobAddress || "").toLowerCase();
+    case "techs":
+      return getJobTechniciansLabel(job).toLowerCase();
+    case "date":
+      return job.createdAt || "";
+    case "status":
+      return job.status || "";
+    default:
+      return "";
+  }
+}
+
+function jobsHref(opts: {
+  status?: string;
+  sort?: SortKey;
+  dir?: SortDir;
+  techId?: string;
+}): string {
+  const p = new URLSearchParams();
+  if (opts.status) p.set("status", opts.status);
+  if (opts.techId) p.set("techId", opts.techId);
+  if (opts.sort && opts.sort !== "date") p.set("sort", opts.sort);
+  if (opts.sort && opts.dir && !(opts.sort === "date" && opts.dir === "desc")) {
+    p.set("dir", opts.dir);
+  } else if (opts.sort === "date" && opts.dir === "asc") {
+    p.set("dir", "asc");
+  }
+  const q = p.toString();
+  return q ? `/jobs?${q}` : "/jobs";
+}
 
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    sort?: string;
+    dir?: string;
+    techId?: string;
+  }>;
 }) {
-  const [session, { status }] = await Promise.all([
-    requireSession(),
-    searchParams,
-  ]);
+  const [session, params] = await Promise.all([requireSession(), searchParams]);
+  const { status } = params;
+  const techId = params.techId?.trim() || undefined;
+  const sort = parseSort(params.sort);
+  const dir = parseDir(params.dir, sort);
 
   if (!session.business) {
     return <p className="text-neutral-500">No business profile found.</p>;
   }
 
-  const snap = await adminDb
-    .collection("jobs")
-    .where("businessId", "==", session.business.id)
-    .limit(200)
-    .get();
+  const [snap, techSnap] = await Promise.all([
+    adminDb
+      .collection("jobs")
+      .where("businessId", "==", session.business.id)
+      .limit(200)
+      .get(),
+    techId
+      ? adminDb.collection("techs").doc(techId).get()
+      : Promise.resolve(null),
+  ]);
 
-  let jobs = snap.docs
-    .map((d) => normalizeJob({ id: d.id, ...d.data() } as Job))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  let jobs = snap.docs.map((d) => normalizeJob({ id: d.id, ...d.data() } as Job));
 
   if (status === "completed" || status === "draft") {
     jobs = jobs.filter((j) => j.status === status);
   }
 
+  if (techId) {
+    jobs = jobs.filter((j) => jobIncludesTech(j, techId));
+  }
+
+  jobs = [...jobs].sort((a, b) => {
+    const av = sortValue(a, sort);
+    const bv = sortValue(b, sort);
+    const cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" });
+    return dir === "asc" ? cmp : -cmp;
+  });
+
+  const filterTech =
+    techSnap?.exists
+      ? ({ id: techSnap.id, ...techSnap.data() } as Tech)
+      : null;
+  const techName = filterTech?.name?.trim() || "Technician";
+  const techBelongs =
+    !techId ||
+    (filterTech && filterTech.businessId === session.business.id);
+
+  const statusHref = (value: string) =>
+    jobsHref({ status: value || undefined, sort, dir, techId });
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold text-brand-900">Jobs</h1>
         <Link href="/jobs/new" className="btn btn-primary flex items-center gap-2">
@@ -48,7 +156,28 @@ export default async function JobsPage({
         </Link>
       </div>
 
-      {/* Status filter */}
+      {techId && techBelongs && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-brand-50 text-brand-800 border border-brand-200">
+            Technician: {techName}
+            <Link
+              href={jobsHref({ status, sort, dir })}
+              className="text-brand-600 hover:text-brand-900"
+              aria-label="Clear technician filter"
+              title="Clear filter"
+            >
+              <X className="w-3.5 h-3.5" />
+            </Link>
+          </span>
+          <Link
+            href="/team"
+            className="text-sm text-neutral-500 hover:text-brand-700"
+          >
+            Back to team
+          </Link>
+        </div>
+      )}
+
       <div className="flex gap-2 flex-wrap">
         {[
           { label: "All", value: "" },
@@ -57,7 +186,7 @@ export default async function JobsPage({
         ].map((f) => (
           <Link
             key={f.value}
-            href={f.value ? `/jobs?status=${f.value}` : "/jobs"}
+            href={statusHref(f.value)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
               (f.value === "" && !status) || status === f.value
                 ? "bg-brand-700 text-white border-brand-700"
@@ -69,29 +198,87 @@ export default async function JobsPage({
         ))}
       </div>
 
-      {/* Table */}
       <div className="card">
         {jobs.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <ClipboardList className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
             <p className="text-neutral-500 text-sm">
-              {status ? `No ${status} jobs found.` : "No jobs yet."}
+              {techId
+                ? `No jobs found for ${techName}.`
+                : status
+                  ? `No ${status} jobs found.`
+                  : "No jobs yet."}
             </p>
-            <Link href="/jobs/new" className="btn btn-primary mt-4 inline-flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Create first job
-            </Link>
+            {!techId && (
+              <Link
+                href="/jobs/new"
+                className="btn btn-primary mt-4 inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Create first job
+              </Link>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="fp-table">
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Job</th>
-                  <th>Address</th>
-                  <th>Techs</th>
-                  <th>Date</th>
-                  <th>Status</th>
+                  <SortHeaderCell
+                    label="Customer"
+                    column="customer"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Job"
+                    column="job"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Type"
+                    column="type"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Address"
+                    column="address"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Techs"
+                    column="techs"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Date"
+                    column="date"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
+                  <SortHeaderCell
+                    label="Status"
+                    column="status"
+                    sort={sort}
+                    dir={dir}
+                    status={status}
+                    techId={techId}
+                  />
                   <th>Report</th>
                   <th></th>
                 </tr>
@@ -101,6 +288,7 @@ export default async function JobsPage({
                   <tr key={job.id}>
                     <td className="font-medium">{job.customerName || "—"}</td>
                     <td>{getJobTitle(job)}</td>
+                    <td className="text-neutral-500 text-sm">{job.jobType || "General"}</td>
                     <td className="text-neutral-500 max-w-xs truncate">
                       {job.jobAddress || "—"}
                     </td>
@@ -144,5 +332,45 @@ export default async function JobsPage({
         )}
       </div>
     </div>
+  );
+}
+
+function SortHeaderCell({
+  label,
+  column,
+  sort,
+  dir,
+  status,
+  techId,
+}: {
+  label: string;
+  column: SortKey;
+  sort: SortKey;
+  dir: SortDir;
+  status?: string;
+  techId?: string;
+}) {
+  const active = sort === column;
+  const nextDir: SortDir = active && dir === "asc" ? "desc" : "asc";
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+
+  return (
+    <th>
+      <Link
+        href={jobsHref({
+          status,
+          techId,
+          sort: column,
+          dir: active ? nextDir : column === "date" ? "desc" : "asc",
+        })}
+        className={`inline-flex items-center gap-1 hover:text-brand-700 transition-colors ${
+          active ? "text-brand-800" : "text-inherit"
+        }`}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <Icon className={`w-3.5 h-3.5 ${active ? "opacity-100" : "opacity-40"}`} />
+      </Link>
+    </th>
   );
 }

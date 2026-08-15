@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase-client";
 import { Camera, X } from "lucide-react";
 import type { JobPhoto } from "@/types";
 
@@ -20,12 +18,56 @@ interface UploadProgress {
   error?: string;
 }
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 
+function uploadViaApi(
+  file: File,
+  storagePrefix: string,
+  onProgress: (pct: number) => void
+): Promise<JobPhoto> {
+  return new Promise((resolve, reject) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      reject(new Error("Only JPEG, PNG, WebP or HEIC images are allowed."));
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      reject(new Error("File too large. Max 15 MB per photo."));
+      return;
+    }
+
+    const body = new FormData();
+    body.append("file", file);
+    body.append("prefix", storagePrefix);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload/job-photo");
+    xhr.responseType = "json";
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      const data = xhr.response as { url?: string; caption?: string; error?: string } | null;
+      if (xhr.status >= 200 && xhr.status < 300 && data?.url) {
+        resolve({
+          url: data.url,
+          caption: data.caption || file.name.replace(/\.[^.]+$/, ""),
+        });
+        return;
+      }
+      reject(new Error(data?.error || `Upload failed (${xhr.status}).`));
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.send(body);
+  });
+}
 
 export default function PhotoUpload({
-  businessId,
   photos,
   onChange,
   max = 20,
@@ -34,38 +76,6 @@ export default function PhotoUpload({
   const [uploading, setUploading] = useState<UploadProgress[]>([]);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const uploadFile = (file: File): Promise<JobPhoto> => {
-    return new Promise((resolve, reject) => {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        reject(new Error("Only JPEG, PNG, WebP or HEIC images are allowed."));
-        return;
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        reject(new Error("File too large. Max 15 MB per photo."));
-        return;
-      }
-
-      const path = `businesses/${businessId}/jobs/${storagePrefix}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const storageRef = ref(storage, path);
-      const task = uploadBytesResumable(storageRef, file);
-
-      task.on(
-        "state_changed",
-        (snap) => {
-          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          setUploading((prev) =>
-            prev.map((u) => (u.file === file ? { ...u, progress: pct } : u))
-          );
-        },
-        (err) => reject(err),
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
-          resolve({ url, caption: file.name.replace(/\.[^.]+$/, "") });
-        }
-      );
-    });
-  };
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -78,24 +88,31 @@ export default function PhotoUpload({
     }
 
     const selected = Array.from(files).slice(0, remaining);
-    const newUploads: UploadProgress[] = selected.map((f) => ({
-      file: f,
-      progress: 0,
-    }));
-    setUploading((prev) => [...prev, ...newUploads]);
+    setUploading((prev) => [
+      ...prev,
+      ...selected.map((f) => ({ file: f, progress: 0 })),
+    ]);
 
-    const results = await Promise.allSettled(selected.map(uploadFile));
+    const results = await Promise.allSettled(
+      selected.map((file) =>
+        uploadViaApi(file, storagePrefix, (pct) => {
+          setUploading((prev) =>
+            prev.map((u) => (u.file === file ? { ...u, progress: pct } : u))
+          );
+        })
+      )
+    );
 
     const uploaded: JobPhoto[] = [];
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
         uploaded.push(r.value);
       } else {
+        const message =
+          r.reason instanceof Error ? r.reason.message : "Upload failed";
         setUploading((prev) =>
           prev.map((u) =>
-            u.file === selected[i]
-              ? { ...u, error: r.reason?.message ?? "Upload failed" }
-              : u
+            u.file === selected[i] ? { ...u, error: message } : u
           )
         );
       }
@@ -126,11 +143,13 @@ export default function PhotoUpload({
         </p>
       )}
 
-      {/* Uploaded photos grid */}
       {photos.length > 0 && (
         <div className="photo-grid">
           {photos.map((photo, i) => (
-            <div key={i} className="relative group rounded-lg overflow-hidden border border-neutral-200">
+            <div
+              key={i}
+              className="relative group rounded-lg overflow-hidden border border-neutral-200"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photo.url}
@@ -160,11 +179,13 @@ export default function PhotoUpload({
         </div>
       )}
 
-      {/* In-progress uploads */}
       {uploading.length > 0 && (
         <div className="space-y-2">
           {uploading.map((u, i) => (
-            <div key={i} className="bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
+            <div
+              key={i}
+              className="bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2"
+            >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-neutral-600 truncate max-w-xs">
                   {u.file.name}
@@ -188,16 +209,18 @@ export default function PhotoUpload({
         </div>
       )}
 
-      {/* Upload button */}
       {photos.length < max && (
         <>
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             multiple
             className="sr-only"
-            onChange={(e) => handleFiles(e.target.files)}
+            onChange={(e) => {
+              void handleFiles(e.target.files);
+              e.target.value = "";
+            }}
           />
           <button
             type="button"

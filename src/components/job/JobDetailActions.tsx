@@ -29,12 +29,14 @@ interface JobDetailActionsProps {
   job: Job;
   session: SessionContext;
   techs: Tech[];
+  canEdit: boolean;
 }
 
 export default function JobDetailActions({
   job: initialJob,
   session,
   techs,
+  canEdit,
 }: JobDetailActionsProps) {
   const router = useRouter();
   const { beforePhotos: initialBefore, afterPhotos: initialAfter } =
@@ -60,21 +62,41 @@ export default function JobDetailActions({
 
   type SaveStatus = "idle" | "saving" | "saved" | "error";
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const skipAutoSaveRef = useRef(true);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
   const updatesRef = useRef({ notes, beforePhotos, afterPhotos, selectedTechIds });
   updatesRef.current = { notes, beforePhotos, afterPhotos, selectedTechIds };
+  const techsRef = useRef(techs);
+  techsRef.current = techs;
+
+  const snapshotUpdates = useCallback(() => {
+    const u = updatesRef.current;
+    return JSON.stringify({
+      notes: u.notes.trim(),
+      beforePhotos: u.beforePhotos,
+      afterPhotos: u.afterPhotos,
+      selectedTechIds: u.selectedTechIds,
+    });
+  }, []);
+
+  const lastSavedSnapshotRef = useRef<string | null>(null);
+  // Seed once so the first mount does not POST an identical draft.
+  if (lastSavedSnapshotRef.current === null) {
+    lastSavedSnapshotRef.current = snapshotUpdates();
+  }
 
   const [generating, startGenerate] = useTransition();
   const [sending, startSend] = useTransition();
   const [completing, startComplete] = useTransition();
   const [deleting, startDelete] = useTransition();
+  const [saving, startSave] = useTransition();
 
   const isDraft = initialJob.status === "draft";
   const businessId = session.business?.id ?? "";
+  const editable = canEdit && isDraft;
 
   const resolveSelectedTechs = (ids: string[]) => {
-    const fromTeam = techs
+    const fromTeam = techsRef.current
       .filter((t) => ids.includes(t.id))
       .map((t) => ({ id: t.id, name: t.name }));
     if (fromTeam.length > 0) return fromTeam;
@@ -98,55 +120,76 @@ export default function JobDetailActions({
     }
   };
 
-  const persistUpdates = useCallback(async () => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
+  const persistUpdates = useCallback(
+    async (opts?: { revalidate?: boolean }) => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      if (savingRef.current) return;
 
-    const {
-      notes: n,
-      beforePhotos: before,
-      afterPhotos: after,
-      selectedTechIds: techIds,
-    } = updatesRef.current;
+      const snap = snapshotUpdates();
+      if (snap === lastSavedSnapshotRef.current) {
+        setSaveStatus("saved");
+        return;
+      }
 
-    const assigned = techs
-      .filter((t) => techIds.includes(t.id))
-      .map((t) => ({ id: t.id, name: t.name }));
-    if (assigned.length === 0 && techs.length > 0) {
-      setSaveStatus("error");
-      throw new Error("Select at least one technician.");
-    }
+      savingRef.current = true;
+      const {
+        notes: n,
+        beforePhotos: before,
+        afterPhotos: after,
+        selectedTechIds: techIds,
+      } = updatesRef.current;
 
-    setSaveStatus("saving");
-    const result = await updateJobAction(initialJob.id, {
-      notes: n.trim(),
-      beforePhotos: before,
-      afterPhotos: after,
-      ...(assigned.length > 0 ? { techs: assigned } : {}),
-    });
-    if (!result.success) {
-      setSaveStatus("error");
-      throw new Error(result.error ?? "Failed to save job.");
-    }
-    setSaveStatus("saved");
-  }, [initialJob.id, techs]);
+      const team = techsRef.current;
+      const assigned = team
+        .filter((t) => techIds.includes(t.id))
+        .map((t) => ({ id: t.id, name: t.name }));
+      if (assigned.length === 0 && team.length > 0) {
+        savingRef.current = false;
+        setSaveStatus("error");
+        throw new Error("Select at least one technician.");
+      }
 
+      setSaveStatus("saving");
+      try {
+        const result = await updateJobAction(
+          initialJob.id,
+          {
+            notes: n.trim(),
+            beforePhotos: before,
+            afterPhotos: after,
+            ...(assigned.length > 0 ? { techs: assigned } : {}),
+          },
+          { revalidate: opts?.revalidate ?? false }
+        );
+        if (!result.success) {
+          setSaveStatus("error");
+          throw new Error(result.error ?? "Failed to save job.");
+        }
+        lastSavedSnapshotRef.current = snap;
+        setSaveStatus("saved");
+      } finally {
+        savingRef.current = false;
+      }
+    },
+    [initialJob.id, snapshotUpdates]
+  );
+
+  // Debounced autosave — only when the serialized draft actually changes.
   useEffect(() => {
-    if (!isDraft) return;
+    if (!editable) return;
 
-    if (skipAutoSaveRef.current) {
-      skipAutoSaveRef.current = false;
-      return;
-    }
+    const snap = snapshotUpdates();
+    if (snap === lastSavedSnapshotRef.current) return;
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     setSaveStatus("idle");
 
     autoSaveTimerRef.current = setTimeout(() => {
       autoSaveTimerRef.current = null;
-      void persistUpdates().catch((err: unknown) => {
+      void persistUpdates({ revalidate: false }).catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to save job.");
       });
     }, 800);
@@ -154,7 +197,28 @@ export default function JobDetailActions({
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [notes, beforePhotos, afterPhotos, selectedTechIds, isDraft, persistUpdates]);
+  }, [notes, beforePhotos, afterPhotos, selectedTechIds, editable, persistUpdates, snapshotUpdates]);
+
+  const handleSave = () => {
+    setError(null);
+    setSuccess(null);
+    startSave(async () => {
+      try {
+        await persistUpdates({ revalidate: true });
+        setSuccess("Job saved. Returning…");
+        // Brief pause so the success message is visible, then go back
+        window.setTimeout(() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/jobs");
+          }
+        }, 700);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save job.");
+      }
+    });
+  };
 
   const handleGenerate = () => {
     setError(null);
@@ -270,6 +334,13 @@ export default function JobDetailActions({
         </Alert>
       )}
 
+      {!canEdit && (
+        <Alert variant="info">
+          View only — you can edit this job if you are the business owner or assigned as a
+          technician on it.
+        </Alert>
+      )}
+
       {isDraft && (
         <>
           <div className="card card-padded space-y-3">
@@ -283,19 +354,20 @@ export default function JobDetailActions({
               techs={techs}
               selectedIds={selectedTechIds}
               onChange={setSelectedTechIds}
+              disabled={!editable}
             />
           </div>
 
           <div className="card card-padded space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-neutral-900">Work Notes</h2>
-              {saveStatus === "saving" && (
+              {editable && saveStatus === "saving" && (
                 <span className="text-xs text-neutral-400">Saving…</span>
               )}
-              {saveStatus === "saved" && (
+              {editable && saveStatus === "saved" && (
                 <span className="text-xs text-success-600">Saved</span>
               )}
-              {saveStatus === "error" && (
+              {editable && saveStatus === "error" && (
                 <span className="text-xs text-error-600">Save failed</span>
               )}
             </div>
@@ -305,34 +377,91 @@ export default function JobDetailActions({
               className="fp-input min-h-25 resize-y"
               placeholder="Summary of work performed — appears on the job completion report cover page."
               maxLength={5000}
+              readOnly={!editable}
+              disabled={!editable}
             />
           </div>
 
           <div className="card card-padded space-y-4">
             <h2 className="font-semibold text-neutral-900">Before Photos</h2>
-            <PhotoUpload
-              businessId={businessId}
-              photos={beforePhotos}
-              onChange={setBeforePhotos}
-              storagePrefix="before"
-            />
+            {editable ? (
+              <PhotoUpload
+                businessId={businessId}
+                photos={beforePhotos}
+                onChange={setBeforePhotos}
+                storagePrefix="before"
+              />
+            ) : beforePhotos.length === 0 ? (
+              <p className="text-sm text-neutral-400">No before photos.</p>
+            ) : (
+              <div className="photo-grid">
+                {beforePhotos.map((photo, i) => (
+                  <a
+                    key={i}
+                    href={photo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative group rounded-lg overflow-hidden border border-neutral-200 block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || `Before photo ${i + 1}`}
+                      className="w-full h-40 object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="card card-padded space-y-4">
             <h2 className="font-semibold text-neutral-900">After Photos</h2>
-            <PhotoUpload
-              businessId={businessId}
-              photos={afterPhotos}
-              onChange={setAfterPhotos}
-              storagePrefix="after"
-            />
+            {editable ? (
+              <PhotoUpload
+                businessId={businessId}
+                photos={afterPhotos}
+                onChange={setAfterPhotos}
+                storagePrefix="after"
+              />
+            ) : afterPhotos.length === 0 ? (
+              <p className="text-sm text-neutral-400">No after photos.</p>
+            ) : (
+              <div className="photo-grid">
+                {afterPhotos.map((photo, i) => (
+                  <a
+                    key={i}
+                    href={photo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative group rounded-lg overflow-hidden border border-neutral-200 block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || `After photo ${i + 1}`}
+                      className="w-full h-40 object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
 
       <div className="flex flex-wrap gap-3">
-        {isDraft && (
+        {editable && (
           <>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || saveStatus === "saving"}
+              className="btn btn-outline flex items-center gap-2"
+            >
+              {(saving || saveStatus === "saving") && <Spinner size="sm" />}
+              {saving || saveStatus === "saving" ? "Saving…" : "Save Job"}
+            </button>
             <button
               onClick={handleGenerate}
               disabled={generating}
@@ -393,24 +522,39 @@ export default function JobDetailActions({
                 View PDF
               </button>
             )}
-            <button
-              onClick={handleSend}
-              disabled={sending || !initialJob.customerEmail}
-              className="btn btn-outline flex items-center gap-2"
-            >
-              {sending ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
-              {sending ? "Sending…" : "Resend Report Email"}
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleSend}
+                disabled={sending || !initialJob.customerEmail}
+                className="btn btn-outline flex items-center gap-2"
+              >
+                {sending ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
+                {sending ? "Sending…" : "Resend Report Email"}
+              </button>
+            )}
           </>
         )}
 
-        <button
-          onClick={() => setShowDelete(true)}
-          className="btn btn-destructive flex items-center gap-2 ml-auto"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete
-        </button>
+        {!editable && isDraft && pdfUrl && (
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="btn btn-outline flex items-center gap-2"
+          >
+            <Eye className="w-4 h-4" />
+            View PDF
+          </button>
+        )}
+
+        {canEdit && (
+          <button
+            onClick={() => setShowDelete(true)}
+            className="btn btn-destructive flex items-center gap-2 ml-auto"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        )}
       </div>
 
       {initialJob.status === "completed" && initialJob.reportSentAt && (

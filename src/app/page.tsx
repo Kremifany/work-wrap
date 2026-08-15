@@ -83,7 +83,7 @@ export default function LandingPage() {
         <MarketingNav />
 
         {/* Hero */}
-        <section className="relative overflow-hidden bg-linear-to-br from-brand-950 via-brand-900 to-brand-800 px-4 py-20 sm:py-28">
+        <section className="relative overflow-hidden bg-linear-to-br from-brand-950 via-brand-900 to-brand-800 px-4 pt-6 pb-16 sm:pt-8 sm:pb-20">
           <div className="relative mx-auto max-w-4xl text-center">
             <div className="mb-6 flex items-center justify-center gap-3">
               <div className="h-px w-8 bg-brand-700 sm:w-14" />

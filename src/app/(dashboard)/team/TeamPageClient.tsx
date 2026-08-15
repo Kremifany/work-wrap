@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { addTechAction, removeTechAction } from "@/actions/team";
 import { Alert, Badge, Modal, PhoneInput, Spinner } from "@/components/ui";
 import { formatPhoneNumber } from "@/lib/utils";
-import { UserCheck, UserPlus, Trash2 } from "lucide-react";
+import { UserCheck, UserPlus, Trash2, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import type { PlanType, Tech } from "@/types";
 
 const PLAN_LIMITS: Record<PlanType, number> = {
@@ -131,35 +132,46 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
                 key={tech.id}
                 className="px-6 py-4 flex items-center gap-4 flex-wrap"
               >
-                <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm shrink-0">
-                  {tech.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-neutral-900">{tech.name}</p>
-                    <Badge variant={tech.role === "owner" ? "info" : "default"}>
-                      {tech.role === "owner" ? "Owner" : "Technician"}
-                    </Badge>
-                    {tech.uid ? (
-                      <Badge variant="success" size="sm">
-                        Active login
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning" size="sm">
-                        No login yet
-                      </Badge>
-                    )}
+                <Link
+                  href={`/jobs?techId=${encodeURIComponent(tech.id)}`}
+                  className="flex items-center gap-4 flex-1 min-w-0 rounded-lg -mx-2 px-2 py-1 hover:bg-neutral-50 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm shrink-0">
+                    {tech.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </div>
-                  <p className="text-sm text-neutral-500 mt-0.5">
-                    {tech.email}
-                    {tech.phone ? ` · ${formatPhoneNumber(tech.phone)}` : ""}
-                  </p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-neutral-900 group-hover:text-brand-700">
+                        {tech.name}
+                      </p>
+                      <Badge variant={tech.role === "owner" ? "info" : "default"}>
+                        {tech.role === "owner" ? "Owner" : "Technician"}
+                      </Badge>
+                      {tech.uid ? (
+                        <Badge variant="success" size="sm">
+                          Active login
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" size="sm">
+                          No login yet
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-neutral-500 mt-0.5">
+                      {tech.email}
+                      {tech.phone ? ` · ${formatPhoneNumber(tech.phone)}` : ""}
+                      <span className="ml-2 text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        View jobs
+                      </span>
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-brand-600 shrink-0" />
+                </Link>
                 {tech.role !== "owner" && (
                   <button
                     onClick={() => handleRemove(tech.id)}

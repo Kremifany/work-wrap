@@ -34,6 +34,34 @@ export function getJobTechniciansLabel(
   return names.length > 0 ? names.join(", ") : "—";
 }
 
+/** True if this tech is assigned to the job (multi-tech list or legacy techId). */
+export function jobIncludesTech(
+  job: Pick<Job, "techId" | "techName" | "techs">,
+  techId: string
+): boolean {
+  const id = techId.trim();
+  if (!id) return false;
+  if (job.techId?.trim() === id) return true;
+  return normalizeJobTechs(job).some((t) => t.id === id);
+}
+
+/**
+ * Owner of the business, or a technician assigned to this job, may edit it.
+ * Other techs on the same business may view but not edit.
+ */
+export function canEditJob(
+  session: { role: string; user: { uid: string }; tech: { id: string } | null },
+  job: Pick<Job, "techId" | "techName" | "techs">
+): boolean {
+  if (session.role === "owner") return true;
+
+  const techId = session.tech?.id?.trim();
+  if (techId && jobIncludesTech(job, techId)) return true;
+  if (jobIncludesTech(job, session.user.uid)) return true;
+
+  return false;
+}
+
 /** Normalize legacy single `photos` array into before/after buckets. */
 export function normalizeJobPhotos(
   job: Pick<Job, "photos" | "beforePhotos" | "afterPhotos">
