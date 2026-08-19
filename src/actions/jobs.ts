@@ -6,17 +6,35 @@ import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth-session";
 import { generateJobPDF } from "@/lib/generate-pdf";
 import { sendReportEmail } from "@/lib/send-report-email";
-import { normalizeJob, getReportFilename } from "@/lib/job-utils";
+import { normalizeJob, getReportFilename, canEditJob } from "@/lib/job-utils";
+import {
+  logJobCompletedInteraction,
+  logJobCreatedInteraction,
+  logReportEmailedInteraction,
+} from "@/lib/interactions";
 import {
   createJobSchema,
   completeJobUpdatesSchema,
   updateJobSchema,
 } from "@/lib/schemas";
-import type { ActionResult, ChecklistItem, Job, JobAssignedTech, JobPhoto, JobType } from "@/types";
+import type { ActionResult, ChecklistItem, Job, JobAssignedTech, JobPhoto, JobType, SessionContext } from "@/types";
 
 // ── Plan-limit check ─────────────────────────────────────────────────────────
 
 const JOB_LIMITS: Record<string, number> = { free: 5, pro: Infinity, team: Infinity };
+
+function denyUnlessCanEdit(
+  session: SessionContext,
+  job: Job
+): { success: false; error: string } | null {
+  if (!canEditJob(session, job)) {
+    return {
+      success: false,
+      error: "Only the business owner or technicians assigned to this job can edit it.",
+    };
+  }
+  return null;
+}
 
 async function checkJobLimit(businessId: string, plan: string): Promise<string | null> {
   const limit = JOB_LIMITS[plan] ?? 5;
@@ -192,9 +210,15 @@ export async function createJobAction(
         .collection("customers")
         .doc(input.customerId)
         .update({ jobCount: FieldValue.increment(1) });
+      await logJobCreatedInteraction(
+        session,
+        { id: ref.id, ...jobData },
+        session.business.id
+      );
     }
 
     revalidatePath("/jobs");
+    if (input.customerId) revalidatePath(`/customers/${input.customerId}`);
     return { success: true, data: { jobId: ref.id } };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create job.";
@@ -216,8 +240,13 @@ export async function updateJobAction(
       | "beforePhotos"
       | "afterPhotos"
       | "techs"
+      | "customerId"
+      | "customerName"
+      | "customerEmail"
+      | "customerPhone"
     >
-  >
+  >,
+  options?: { revalidate?: boolean }
 ): Promise<ActionResult> {
   try {
     const parsed = updateJobSchema.safeParse(updates);
@@ -230,6 +259,8 @@ export async function updateJobAction(
 
     const job = await loadOwnedJob(jobId, session.business.id);
     if (!job) return { success: false, error: "Job not found." };
+    const denied = denyUnlessCanEdit(session, job);
+    if (denied) return denied;
     if (job.status === "completed") {
       return { success: false, error: "Completed jobs cannot be edited." };
     }
@@ -239,6 +270,10 @@ export async function updateJobAction(
     if (updates.jobAddress !== undefined) patch.jobAddress = updates.jobAddress;
     if (updates.checklist !== undefined) patch.checklist = updates.checklist;
     if (updates.notes !== undefined) patch.notes = updates.notes;
+    if (updates.customerId !== undefined) patch.customerId = updates.customerId;
+    if (updates.customerName !== undefined) patch.customerName = updates.customerName;
+    if (updates.customerEmail !== undefined) patch.customerEmail = updates.customerEmail;
+    if (updates.customerPhone !== undefined) patch.customerPhone = updates.customerPhone;
     if (updates.techs !== undefined) {
       const techs = updates.techs;
       patch.techs = techs;
@@ -260,9 +295,28 @@ export async function updateJobAction(
       ];
     }
 
+    // If customer changed, bump jobCount on new customer (best-effort)
+    if (
+      updates.customerId !== undefined &&
+      updates.customerId &&
+      updates.customerId !== job.customerId
+    ) {
+      const custSnap = await adminDb.collection("customers").doc(updates.customerId).get();
+      if (!custSnap.exists || custSnap.data()?.businessId !== session.business.id) {
+        return { success: false, error: "Customer not found." };
+      }
+    }
+
     await adminDb.collection("jobs").doc(jobId).update(patch);
-    revalidatePath(`/jobs/${jobId}`);
-    revalidatePath("/jobs");
+    // Autosave passes revalidate:false to avoid remount loops on the job page.
+    if (options?.revalidate !== false) {
+      revalidatePath(`/jobs/${jobId}`);
+      revalidatePath("/jobs");
+      if (job.customerId) revalidatePath(`/customers/${job.customerId}`);
+      if (updates.customerId && updates.customerId !== job.customerId) {
+        revalidatePath(`/customers/${updates.customerId}`);
+      }
+    }
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update job.";
@@ -287,6 +341,8 @@ export async function generateReportAction(
 
     const job = await loadOwnedJob(jobId, session.business.id);
     if (!job) return { success: false, error: "Job not found." };
+    const denied = denyUnlessCanEdit(session, job);
+    if (denied) return denied;
 
     const finalJob = normalizeJob({
       ...job,
@@ -335,6 +391,8 @@ export async function sendReportAction(
 
     const loaded = await loadOwnedJob(jobId, session.business.id);
     if (!loaded) return { success: false, error: "Job not found." };
+    const denied = denyUnlessCanEdit(session, loaded);
+    if (denied) return denied;
 
     // Prefer CRM customer email (one per customer) over stale job snapshot
     const job = await resolveJobWithCustomerContact(loaded);
@@ -347,6 +405,7 @@ export async function sendReportAction(
     await sendReportEmail({ job, business, pdfBuffer: pdfBytes });
 
     const sentAt = new Date().toISOString();
+    const wasCompleted = job.status === "completed";
     await adminDb.collection("jobs").doc(jobId).update({
       reportSentAt: sentAt,
       status: "completed",
@@ -354,8 +413,19 @@ export async function sendReportAction(
       pdfUrl: job.pdfUrl ?? (await savePdfToStorage(business.id, jobId, pdfBytes, getReportFilename(job))),
     });
 
+    await logReportEmailedInteraction(
+      session,
+      job,
+      business.id,
+      job.customerEmail.trim()
+    );
+    if (!wasCompleted) {
+      await logJobCompletedInteraction(session, job, business.id);
+    }
+
     revalidatePath(`/jobs/${jobId}`);
     revalidatePath("/jobs");
+    if (job.customerId) revalidatePath(`/customers/${job.customerId}`);
     return { success: true, data: { emailedTo: job.customerEmail.trim() } };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to send report.";
@@ -378,8 +448,11 @@ export async function completeJobAction(
 
     const loaded = await loadOwnedJob(jobId, session.business.id);
     if (!loaded) return { success: false, error: "Job not found." };
+    const denied = denyUnlessCanEdit(session, loaded);
+    if (denied) return denied;
 
     const job = await resolveJobWithCustomerContact(loaded);
+    const wasCompleted = job.status === "completed";
 
     if (job.customerEmail?.trim()) {
       const pdfBytes = await generateJobPDF(job, session.business);
@@ -390,15 +463,28 @@ export async function completeJobAction(
         completedAt,
         reportSentAt: completedAt,
       });
+      await logReportEmailedInteraction(
+        session,
+        job,
+        session.business.id,
+        job.customerEmail.trim()
+      );
+      if (!wasCompleted) {
+        await logJobCompletedInteraction(session, job, session.business.id);
+      }
     } else {
       await adminDb.collection("jobs").doc(jobId).update({
         status: "completed",
         completedAt: new Date().toISOString(),
       });
+      if (!wasCompleted) {
+        await logJobCompletedInteraction(session, job, session.business.id);
+      }
     }
 
     revalidatePath("/jobs");
     revalidatePath(`/jobs/${jobId}`);
+    if (job.customerId) revalidatePath(`/customers/${job.customerId}`);
     return genResult;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to complete job.";
@@ -419,14 +505,14 @@ export async function deleteJobAction(jobId: string): Promise<ActionResult> {
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
 
-    const jobSnap = await adminDb.collection("jobs").doc(jobId).get();
-    if (!jobSnap.exists) return { success: false, error: "Job not found." };
-
-    const job = jobSnap.data() as Omit<Job, "id">;
-    if (job.businessId !== session.business.id) return { success: false, error: "Access denied." };
+    const job = await loadOwnedJob(jobId, session.business.id);
+    if (!job) return { success: false, error: "Job not found." };
+    const denied = denyUnlessCanEdit(session, job);
+    if (denied) return denied;
 
     await adminDb.collection("jobs").doc(jobId).delete();
     revalidatePath("/jobs");
+    if (job.customerId) revalidatePath(`/customers/${job.customerId}`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete job.";

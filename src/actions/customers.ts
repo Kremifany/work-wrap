@@ -7,12 +7,14 @@ import {
   customerAddressInputSchema,
   customerInputSchema,
   updateCustomerSchema,
+  addCustomerInteractionSchema,
 } from "@/lib/schemas";
 import {
   buildServiceAddressesFromInput,
   normalizeCustomer,
   newAddressId,
 } from "@/lib/customer-utils";
+import { actorFromSession, logCustomerInteraction } from "@/lib/interactions";
 import type { ActionResult, Customer, CustomerServiceAddress } from "@/types";
 
 export interface CustomerInput {
@@ -319,6 +321,59 @@ export async function deleteCustomerAction(customerId: string): Promise<ActionRe
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete customer.";
+    return { success: false, error: msg };
+  }
+}
+
+export async function addCustomerInteractionAction(
+  customerId: string,
+  input: { type: "note" | "call" | "sms_logged"; body: string; to?: string; jobId?: string | null }
+): Promise<ActionResult<{ interactionId: string }>> {
+  try {
+    const parsed = addCustomerInteractionSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid interaction." };
+    }
+
+    const session = await getSession();
+    if (!session?.business) return { success: false, error: "Not authenticated." };
+
+    const existing = await getOwnedCustomer(customerId, session.business.id);
+    if (!existing) return { success: false, error: "Customer not found." };
+
+    const actor = actorFromSession(session);
+    const type = parsed.data.type;
+    const titles = {
+      note: "Note added",
+      call: "Phone call logged",
+      sms_logged: "Text message logged",
+    } as const;
+    const channels = {
+      note: "system",
+      call: "phone",
+      sms_logged: "sms",
+    } as const;
+
+    const interactionId = await logCustomerInteraction({
+      businessId: session.business.id,
+      customerId,
+      jobId: parsed.data.jobId ?? null,
+      type,
+      channel: channels[type],
+      title: titles[type],
+      body: parsed.data.body,
+      to: parsed.data.to || (type === "sms_logged" ? existing.phone : type === "call" ? existing.phone : ""),
+      ...actor,
+    });
+
+    if (!interactionId) {
+      return { success: false, error: "Failed to save interaction." };
+    }
+
+    revalidateCustomer(customerId);
+    return { success: true, data: { interactionId } };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to save interaction.";
     return { success: false, error: msg };
   }
 }

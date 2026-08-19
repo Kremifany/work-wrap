@@ -5,13 +5,15 @@ import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { getJobTitle, normalizeJob } from "@/lib/job-utils";
+import { mergeCustomerTimeline } from "@/lib/interactions";
 import {
   CustomerServiceAddressesTable,
   EditCustomerForm,
 } from "@/components/CustomerForms";
+import { CustomerActivityTimeline } from "@/components/CustomerActivityTimeline";
 import { normalizeCustomer } from "@/lib/customer-utils";
 import { ArrowLeft } from "lucide-react";
-import type { Customer, Job } from "@/types";
+import type { Customer, Interaction, Job } from "@/types";
 
 export async function generateMetadata({
   params,
@@ -30,14 +32,20 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const [{ id }, session] = await Promise.all([params, requireSession()]);
-  if (!session.business) notFound();
+  const business = session.business;
+  if (!business) notFound();
 
-  const [custSnap, jobsSnap] = await Promise.all([
+  const [custSnap, jobsSnap, interactionsSnap] = await Promise.all([
     adminDb.collection("customers").doc(id).get(),
     adminDb
       .collection("jobs")
-      .where("businessId", "==", session.business.id)
+      .where("businessId", "==", business.id)
       .limit(200)
+      .get(),
+    adminDb
+      .collection("interactions")
+      .where("customerId", "==", id)
+      .limit(100)
       .get(),
   ]);
 
@@ -46,13 +54,18 @@ export default async function CustomerDetailPage({
     id: custSnap.id,
     ...custSnap.data(),
   } as Customer);
-  if (customer.businessId !== session.business.id) notFound();
+  if (customer.businessId !== business.id) notFound();
 
   const jobs = jobsSnap.docs
     .map((d) => normalizeJob({ id: d.id, ...d.data() } as Job))
     .filter((j) => j.customerId === id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 50);
+
+  const storedInteractions = interactionsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Interaction))
+    .filter((i) => i.businessId === business.id);
+  const timeline = mergeCustomerTimeline(storedInteractions, jobs);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -71,13 +84,11 @@ export default async function CustomerDetailPage({
         </p>
       </div>
 
-      {/* Edit form */}
       <div className="card card-padded">
         <h2 className="font-semibold text-neutral-900 mb-5">Customer Details</h2>
         <EditCustomerForm customer={customer} />
       </div>
 
-      {/* Service addresses subtable */}
       <div className="card card-padded">
         <div className="mb-5">
           <h2 className="font-semibold text-neutral-900">Service Addresses</h2>
@@ -88,7 +99,12 @@ export default async function CustomerDetailPage({
         <CustomerServiceAddressesTable customer={customer} />
       </div>
 
-      {/* Job history */}
+      <CustomerActivityTimeline
+        customerId={customer.id}
+        interactions={timeline}
+        defaultPhone={customer.phone}
+      />
+
       <div className="card">
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div>

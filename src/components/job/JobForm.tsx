@@ -455,18 +455,24 @@ export default function JobForm({
         />
       </section>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="btn btn-primary flex items-center gap-2"
-        >
-          {submitting && <Spinner size="sm" />}
-          {submitting ? "Saving…" : "Create Job"}
-        </button>
-        <a href="/jobs" className="btn btn-outline">
-          Cancel
-        </a>
+      <div className="pt-2 space-y-3">
+        <p className="text-sm text-neutral-500">
+          Saves as a draft. Photos are optional — you can add them later, then generate
+          or send the report from the job page.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            {submitting && <Spinner size="sm" />}
+            {submitting ? "Saving…" : "Save Job"}
+          </button>
+          <a href="/jobs" className="btn btn-outline">
+            Cancel
+          </a>
+        </div>
       </div>
     </form>
   );

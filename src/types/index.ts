@@ -65,6 +65,33 @@ export interface Customer {
   createdAt: string;
 }
 
+// ─── Customer interactions (CRM timeline) ───────────────────────────────────
+export type InteractionType =
+  | "email_report_sent"
+  | "sms_logged"
+  | "job_created"
+  | "job_completed"
+  | "note"
+  | "call";
+
+export type InteractionChannel = "email" | "sms" | "phone" | "system";
+
+export interface Interaction {
+  id: string;
+  businessId: string;
+  customerId: string;
+  jobId: string | null;
+  type: InteractionType;
+  channel: InteractionChannel;
+  title: string;
+  body: string;
+  /** Recipient email or phone when relevant. */
+  to: string;
+  createdByUid: string;
+  createdByName: string;
+  createdAt: string;
+}
+
 // ─── Job ─────────────────────────────────────────────────────────────────────
 export interface ChecklistItem {
   item: string;
