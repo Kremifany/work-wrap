@@ -1,19 +1,23 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
   getAdditionalUserInfo,
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase-client";
 import { createSessionAction, registerBusinessAction } from "@/actions/auth";
 import { clientEnv } from "@/lib/env.client";
+import {
+  completeGoogleRedirectIfPresent,
+  googleSignInErrorMessage,
+  isLanIpHost,
+  startGoogleSignIn,
+} from "@/lib/google-auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -42,12 +46,63 @@ function RegisterFormInner() {
   const [accessCode,    setAccessCode]    = useState("");
   const [error,         setError]         = useState("");
   const [loading,       setLoading]       = useState(false);
+  const [lanHost,       setLanHost]       = useState(false);
+
+  useEffect(() => {
+    setLanHost(isLanIpHost());
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await completeGoogleRedirectIfPresent();
+        if (cancelled || !result) return;
+        setLoading(true);
+        const extraInfo = getAdditionalUserInfo(result);
+        const token = await result.user.getIdToken();
+        const sessionRes = await createSessionAction(token);
+        if (!sessionRes.success) throw new Error(sessionRes.error);
+
+        if (extraInfo?.isNewUser) {
+          const displayName = result.user.displayName ?? "";
+          const profileRes = await registerBusinessAction(
+            result.user.uid,
+            displayName,
+            displayName,
+            result.user.email ?? "",
+            accessCode || undefined,
+          );
+          if (!profileRes.success) throw new Error(profileRes.error);
+        }
+
+        if (planParam !== "free") {
+          router.push(`/billing?upgrade=${planParam}`);
+        } else {
+          router.push("/dashboard?onboarding=1");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const msg = googleSignInErrorMessage(err);
+        if (msg) setError(msg);
+        else if (err instanceof Error && err.message) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // accessCode intentionally omitted — redirect completion uses current field value
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, planParam]);
 
   async function handleGoogleSignIn() {
     setLoading(true);
     setError("");
     try {
-      const result = await signInWithPopup(auth, new GoogleAuthProvider());
+      const result = await startGoogleSignIn();
+      if (result === "redirecting") return;
+
       const extraInfo = getAdditionalUserInfo(result);
       const token = await result.user.getIdToken();
 
@@ -72,14 +127,9 @@ function RegisterFormInner() {
         router.push("/dashboard?onboarding=1");
       }
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? "";
-      if (code !== "auth/popup-closed-by-user") {
-        if (code === "auth/operation-not-allowed") {
-          setError("Google sign-in is not enabled for this app yet. Use email sign-up or ask the admin to enable Google in Firebase.");
-        } else {
-          setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
-        }
-      }
+      const msg = googleSignInErrorMessage(err);
+      if (msg) setError(msg);
+      else if (err instanceof Error && err.message) setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -180,11 +230,16 @@ function RegisterFormInner() {
           {error}
         </Alert>
       )}
+      {lanHost && !error && (
+        <Alert variant="info" className="mt-4">
+          You&apos;re on a local network address. Google sign-in won&apos;t work here — use email sign-up, or open the live site.
+        </Alert>
+      )}
 
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        disabled={loading}
+        disabled={loading || lanHost}
         className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:border-slate-400 disabled:opacity-50"
       >
         <GoogleIcon />

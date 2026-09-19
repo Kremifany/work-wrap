@@ -134,6 +134,7 @@ function drawSectionHeader(ctx: PageContext, meta: ReportMeta, title: string) {
 
 function drawPageHeader(ctx: PageContext, meta: ReportMeta, logoEmbed: Awaited<ReturnType<typeof embedImage>> | null) {
   const headerTop = PAGE_H - MARGIN;
+  let logoH = 0;
 
   if (logoEmbed) {
     const maxW = 86.4; // 1.2"
@@ -141,6 +142,7 @@ function drawPageHeader(ctx: PageContext, meta: ReportMeta, logoEmbed: Awaited<R
     const scale = Math.min(maxW / logoEmbed.width, maxH / logoEmbed.height, 1);
     const w = logoEmbed.width * scale;
     const h = logoEmbed.height * scale;
+    logoH = h;
     ctx.page.drawImage(logoEmbed, {
       x: MARGIN,
       y: headerTop - h,
@@ -149,6 +151,7 @@ function drawPageHeader(ctx: PageContext, meta: ReportMeta, logoEmbed: Awaited<R
     });
   }
 
+  // Job title on the right — never overlaps the logo on the left
   const titleText = meta.jobTitle.length > 60 ? `${meta.jobTitle.slice(0, 57)}…` : meta.jobTitle;
   const titleW = ctx.regular.widthOfTextAtSize(titleText, 9);
   ctx.page.drawText(titleText, {
@@ -159,14 +162,16 @@ function drawPageHeader(ctx: PageContext, meta: ReportMeta, logoEmbed: Awaited<R
     color: ctx.muted,
   });
 
+  // Rule and content start below the logo so section titles (BEFORE/AFTER) don't collide
+  const lineY = headerTop - Math.max(logoH, 14) - 8;
   ctx.page.drawLine({
-    start: { x: MARGIN, y: headerTop - 20 },
-    end: { x: PAGE_W - MARGIN, y: headerTop - 20 },
+    start: { x: MARGIN, y: lineY },
+    end: { x: PAGE_W - MARGIN, y: lineY },
     thickness: 1,
     color: ctx.accent,
   });
 
-  ctx.y = headerTop - 36;
+  ctx.y = lineY - 18;
 }
 
 function fitImageInCell(

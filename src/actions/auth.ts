@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { serverEnv } from "@/lib/env.server";
+import { sessionCookieOptions } from "@/lib/session-cookie";
 import { validateAccessCode, redeemAccessCode } from "@/actions/access-codes";
 import { registerBusinessSchema } from "@/lib/schemas";
 import type { ActionResult, Business } from "@/types";
@@ -14,13 +15,7 @@ export async function createSessionAction(idToken: string): Promise<ActionResult
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     const cookieStore = await cookies();
-    cookieStore.set("__session", sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: expiresIn / 1000,
-      path: "/",
-    });
+    cookieStore.set("__session", sessionCookie, await sessionCookieOptions(expiresIn / 1000));
     return { success: true };
   } catch {
     return { success: false, error: "Failed to create session. Please try again." };

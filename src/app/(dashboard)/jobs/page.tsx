@@ -10,7 +10,7 @@ import {
   jobIncludesTech,
   normalizeJob,
 } from "@/lib/job-utils";
-import { ArrowDown, ArrowUp, ArrowUpDown, ClipboardList, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
 import type { Job, Tech } from "@/types";
 
 export const metadata = { title: "Jobs | Job Tracker Pro" };
@@ -219,116 +219,147 @@ export default async function JobsPage({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="fp-table">
-              <thead>
-                <tr>
-                  <SortHeaderCell
-                    label="Customer"
-                    column="customer"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Job"
-                    column="job"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Type"
-                    column="type"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Address"
-                    column="address"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Techs"
-                    column="techs"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Date"
-                    column="date"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <SortHeaderCell
-                    label="Status"
-                    column="status"
-                    sort={sort}
-                    dir={dir}
-                    status={status}
-                    techId={techId}
-                  />
-                  <th>Report</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.id}>
-                    <td className="font-medium">{job.customerName || "—"}</td>
-                    <td>{getJobTitle(job)}</td>
-                    <td className="text-neutral-500 text-sm">{job.jobType || "General"}</td>
-                    <td className="text-neutral-500 max-w-xs truncate">
-                      {job.jobAddress || "—"}
-                    </td>
-                    <td className="text-neutral-500">{getJobTechniciansLabel(job)}</td>
-                    <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
-                    <td>
-                      <Badge
-                        variant={job.status === "completed" ? "success" : "warning"}
-                      >
-                        {job.status === "completed" ? "Completed" : "Draft"}
-                      </Badge>
-                    </td>
-                    <td>
-                      {job.pdfUrl ? (
-                        <a
-                          href={job.pdfUrl}
-                          download={getReportFilename(job)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+          <>
+            {/* Mobile: compact clickable list */}
+            <ul className="md:hidden divide-y divide-neutral-100">
+              {jobs.map((job) => (
+                <li key={job.id}>
+                  <Link
+                    href={`/jobs/${job.id}`}
+                    className="flex items-center gap-3 px-4 py-3.5 active:bg-neutral-50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-neutral-900 truncate">
+                        {job.customerName || "Unknown customer"}
+                      </p>
+                      <p className="text-sm text-neutral-500 truncate mt-0.5">
+                        {getJobTitle(job)}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={job.status === "completed" ? "success" : "warning"}
+                      size="sm"
+                    >
+                      {job.status === "completed" ? "Done" : "Draft"}
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="fp-table">
+                <thead>
+                  <tr>
+                    <SortHeaderCell
+                      label="Customer"
+                      column="customer"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Job"
+                      column="job"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Type"
+                      column="type"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Address"
+                      column="address"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Techs"
+                      column="techs"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Date"
+                      column="date"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <SortHeaderCell
+                      label="Status"
+                      column="status"
+                      sort={sort}
+                      dir={dir}
+                      status={status}
+                      techId={techId}
+                    />
+                    <th>Report</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.map((job) => (
+                    <tr key={job.id}>
+                      <td className="font-medium">{job.customerName || "—"}</td>
+                      <td>{getJobTitle(job)}</td>
+                      <td className="text-neutral-500 text-sm">{job.jobType || "General"}</td>
+                      <td className="text-neutral-500 max-w-xs truncate">
+                        {job.jobAddress || "—"}
+                      </td>
+                      <td className="text-neutral-500">{getJobTechniciansLabel(job)}</td>
+                      <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
+                      <td>
+                        <Badge
+                          variant={job.status === "completed" ? "success" : "warning"}
+                        >
+                          {job.status === "completed" ? "Completed" : "Draft"}
+                        </Badge>
+                      </td>
+                      <td>
+                        {job.pdfUrl ? (
+                          <a
+                            href={job.pdfUrl}
+                            download={getReportFilename(job)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand-600 hover:text-brand-700 text-sm font-medium"
+                          >
+                            PDF
+                          </a>
+                        ) : (
+                          <span className="text-neutral-400 text-sm">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <Link
+                          href={`/jobs/${job.id}`}
                           className="text-brand-600 hover:text-brand-700 text-sm font-medium"
                         >
-                          PDF
-                        </a>
-                      ) : (
-                        <span className="text-neutral-400 text-sm">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <Link
-                        href={`/jobs/${job.id}`}
-                        className="text-brand-600 hover:text-brand-700 text-sm font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
