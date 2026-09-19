@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase-client";
 import { createSessionAction } from "@/actions/auth";
+import {
+  completeGoogleRedirectIfPresent,
+  googleSignInErrorMessage,
+  isLanIpHost,
+  startGoogleSignIn,
+} from "@/lib/google-auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -33,24 +34,55 @@ export default function LoginForm() {
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [lanHost, setLanHost] = useState(false);
+
+  useEffect(() => {
+    setLanHost(isLanIpHost());
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const cred = await completeGoogleRedirectIfPresent();
+        if (cancelled || !cred) return;
+        setLoading(true);
+        const token = await cred.user.getIdToken();
+        const res = await createSessionAction(token);
+        if (!res.success) {
+          setError(res.error ?? "Sign-in failed. Please try again.");
+          return;
+        }
+        router.push("/dashboard");
+      } catch (err) {
+        if (cancelled) return;
+        const msg = googleSignInErrorMessage(err);
+        if (msg) setError(msg);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleGoogleSignIn() {
     setLoading(true);
     setError("");
     try {
-      const cred  = await signInWithPopup(auth, new GoogleAuthProvider());
-      const token = await cred.user.getIdToken();
-      const res   = await createSessionAction(token);
+      const result = await startGoogleSignIn();
+      if (result === "redirecting") return; // page will navigate away
+
+      const token = await result.user.getIdToken();
+      const res = await createSessionAction(token);
       if (!res.success) {
         setError(res.error ?? "Sign-in failed. Please try again.");
         return;
       }
       router.push("/dashboard");
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? "";
-      if (code !== "auth/popup-closed-by-user") {
-        setError("Google sign-in failed. Please try again.");
-      }
+      const msg = googleSignInErrorMessage(err);
+      if (msg) setError(msg);
     } finally {
       setLoading(false);
     }
@@ -115,11 +147,16 @@ export default function LoginForm() {
           Password reset email sent. Check your inbox.
         </Alert>
       )}
+      {lanHost && !error && (
+        <Alert variant="info" className="mt-4">
+          You&apos;re on a local network address. Google sign-in won&apos;t work here — use email and password, or open the live site.
+        </Alert>
+      )}
 
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        disabled={loading}
+        disabled={loading || lanHost}
         className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:border-slate-400 disabled:opacity-50"
       >
         <GoogleIcon />

@@ -12,6 +12,7 @@ import {
   Clock,
   Plus,
   ArrowRight,
+  ChevronRight,
 } from "lucide-react";
 import type { Job, DashboardStats } from "@/types";
 
@@ -202,43 +203,72 @@ export default async function DashboardPage({
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="fp-table">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Job Type</th>
-                  <th>Address</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recentJobs.map((job) => (
-                  <tr key={job.id}>
-                    <td className="font-medium">{job.customerName || "—"}</td>
-                    <td>{getJobTitle(job)}</td>
-                    <td className="text-neutral-500 max-w-xs truncate">{job.jobAddress || "—"}</td>
-                    <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
-                    <td>
-                      <Badge variant={job.status === "completed" ? "success" : "warning"}>
-                        {job.status === "completed" ? "Completed" : "Draft"}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Link
-                        href={`/jobs/${job.id}`}
-                        className="text-brand-600 hover:text-brand-700 text-sm font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
+          <>
+            <ul className="md:hidden divide-y divide-neutral-100">
+              {stats.recentJobs.map((job) => (
+                <li key={job.id}>
+                  <Link
+                    href={`/jobs/${job.id}`}
+                    className="flex items-center gap-3 px-4 py-3.5 active:bg-neutral-50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-neutral-900 truncate">
+                        {job.customerName || "Unknown customer"}
+                      </p>
+                      <p className="text-sm text-neutral-500 truncate mt-0.5">
+                        {getJobTitle(job)}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={job.status === "completed" ? "success" : "warning"}
+                      size="sm"
+                    >
+                      {job.status === "completed" ? "Done" : "Draft"}
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="fp-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Job Type</th>
+                    <th>Address</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stats.recentJobs.map((job) => (
+                    <tr key={job.id}>
+                      <td className="font-medium">{job.customerName || "—"}</td>
+                      <td>{getJobTitle(job)}</td>
+                      <td className="text-neutral-500 max-w-xs truncate">{job.jobAddress || "—"}</td>
+                      <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
+                      <td>
+                        <Badge variant={job.status === "completed" ? "success" : "warning"}>
+                          {job.status === "completed" ? "Completed" : "Draft"}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="text-brand-600 hover:text-brand-700 text-sm font-medium"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

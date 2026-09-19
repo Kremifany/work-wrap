@@ -13,12 +13,11 @@ import PhotoUpload from "@/components/job/PhotoUpload";
 import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
-import { normalizeJobPhotos, getJobTitle, getReportFilename, normalizeJobTechs } from "@/lib/job-utils";
+import { normalizeJobPhotos, getJobTitle, normalizeJobTechs } from "@/lib/job-utils";
 import {
   CheckCircle2,
   RefreshCw,
   Trash2,
-  Download,
   FileText,
   Mail,
   Eye,
@@ -236,7 +235,14 @@ export default function JobDetailActions({
         const url = result.data?.pdfUrl ?? null;
         if (url) {
           setPreviewUrl(url);
-          setShowPreview(true);
+          if (
+            typeof window !== "undefined" &&
+            window.matchMedia("(max-width: 767px)").matches
+          ) {
+            window.open(url, "_blank", "noopener,noreferrer");
+          } else {
+            setShowPreview(true);
+          }
         }
         setSuccess("Job completion report PDF generated.");
         router.refresh();
@@ -269,25 +275,14 @@ export default function JobDetailActions({
     });
   };
 
-  const handleDownloadPdf = async () => {
+  const handleViewPdf = () => {
     if (!pdfUrl) return;
-    setError(null);
-    try {
-      const res = await fetch(pdfUrl);
-      if (!res.ok) throw new Error("Download failed.");
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = getReportFilename(initialJob);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      // Cross-origin / CORS fallback — open storage URL (may use storage path name)
+    // Mobile browsers often fail to render Storage PDFs inside iframes/modals
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
       window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      return;
     }
+    setShowPreview(true);
   };
 
   const handleComplete = () => {
@@ -473,7 +468,7 @@ export default function JobDetailActions({
             {pdfUrl && (
               <button
                 type="button"
-                onClick={() => setShowPreview(true)}
+                onClick={handleViewPdf}
                 className="btn btn-outline flex items-center gap-2"
               >
                 <Eye className="w-4 h-4" />
@@ -500,45 +495,21 @@ export default function JobDetailActions({
           </>
         )}
 
-        {!isDraft && (
-          <>
-            {pdfUrl && (
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                className="btn btn-outline flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download PDF
-              </button>
-            )}
-            {pdfUrl && (
-              <button
-                type="button"
-                onClick={() => setShowPreview(true)}
-                className="btn btn-outline flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                View PDF
-              </button>
-            )}
-            {canEdit && (
-              <button
-                onClick={handleSend}
-                disabled={sending || !initialJob.customerEmail}
-                className="btn btn-outline flex items-center gap-2"
-              >
-                {sending ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
-                {sending ? "Sending…" : "Resend Report Email"}
-              </button>
-            )}
-          </>
+        {!isDraft && canEdit && (
+          <button
+            onClick={handleSend}
+            disabled={sending || !initialJob.customerEmail}
+            className="btn btn-outline flex items-center gap-2"
+          >
+            {sending ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
+            {sending ? "Sending…" : "Resend Report Email"}
+          </button>
         )}
 
         {!editable && isDraft && pdfUrl && (
           <button
             type="button"
-            onClick={() => setShowPreview(true)}
+            onClick={handleViewPdf}
             className="btn btn-outline flex items-center gap-2"
           >
             <Eye className="w-4 h-4" />
@@ -567,11 +538,38 @@ export default function JobDetailActions({
 
       {!isDraft && pdfUrl && (
         <div className="card card-padded">
-          <h2 className="font-semibold text-neutral-900 mb-3">Report Preview</h2>
+          <h2 className="font-semibold text-neutral-900 mb-3">Job completion report</h2>
+
+          {/* Mobile: phones can't embed most Storage PDFs in an iframe */}
+          <div className="md:hidden rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-brand-700" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-neutral-900">
+                  {getJobTitle(initialJob)} report
+                </p>
+                <p className="text-sm text-neutral-500 mt-0.5">
+                  View the PDF on your phone.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleViewPdf}
+              className="btn btn-primary flex items-center justify-center gap-2 w-full mt-4"
+            >
+              <Eye className="w-4 h-4" />
+              View PDF
+            </button>
+          </div>
+
+          {/* Desktop preview */}
           <iframe
             src={pdfUrl}
             title={`Job completion report — ${getJobTitle(initialJob)}`}
-            className="w-full h-[600px] rounded-lg border border-neutral-200"
+            className="hidden md:block w-full h-[600px] rounded-lg border border-neutral-200 bg-white"
           />
         </div>
       )}
@@ -583,11 +581,28 @@ export default function JobDetailActions({
         className="max-w-5xl"
       >
         {pdfUrl ? (
-          <iframe
-            src={pdfUrl}
-            title={`Job completion report — ${getJobTitle(initialJob)}`}
-            className="w-full h-[70vh] rounded-lg border border-neutral-200"
-          />
+          <>
+            <div className="md:hidden space-y-3">
+              <p className="text-sm text-neutral-600">
+                PDF preview isn&apos;t available in this phone browser. Open the file instead.
+              </p>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary flex items-center justify-center gap-2 w-full"
+                onClick={() => setShowPreview(false)}
+              >
+                <Eye className="w-4 h-4" />
+                View PDF
+              </a>
+            </div>
+            <iframe
+              src={pdfUrl}
+              title={`Job completion report — ${getJobTitle(initialJob)}`}
+              className="hidden md:block w-full h-[70vh] rounded-lg border border-neutral-200"
+            />
+          </>
         ) : null}
       </Modal>
 

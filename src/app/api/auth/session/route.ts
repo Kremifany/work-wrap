@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase-admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { sessionCookieOptions } from "@/lib/session-cookie";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -30,13 +31,7 @@ export async function POST(req: NextRequest) {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set("__session", sessionCookie, {
-      maxAge: expiresIn / 1000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    cookieStore.set("__session", sessionCookie, await sessionCookieOptions(expiresIn / 1000));
 
     logger.info("Session created", { uid: decoded.uid });
     return NextResponse.json({ ok: true });
