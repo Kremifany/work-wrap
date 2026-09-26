@@ -11,7 +11,7 @@ import {
   getPrimaryAddressLine,
   normalizeCustomer,
 } from "@/lib/customer-utils";
-import { normalizeJobTechs, getJobTitle } from "@/lib/job-utils";
+import { getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
 import type { Customer, Job, Tech } from "@/types";
 
 const CUSTOM_ADDRESS_VALUE = "__custom__";
@@ -43,7 +43,7 @@ export default function JobEditForm({ job, customers, techs }: JobEditFormProps)
     return match?.id ?? (job.jobAddress ? CUSTOM_ADDRESS_VALUE : getPrimaryAddress(cust)?.id ?? "");
   });
   const [selectedTechIds, setSelectedTechIds] = useState<string[]>(() =>
-    normalizeJobTechs(job).map((t) => t.id)
+    resolveJobTechSelectionIds(job, techs)
   );
 
   const selectedCustomer = normalizedCustomers.find((c) => c.id === selectedCustomerId);

@@ -13,7 +13,7 @@ import PhotoUpload from "@/components/job/PhotoUpload";
 import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
-import { normalizeJobPhotos, getJobTitle, normalizeJobTechs } from "@/lib/job-utils";
+import { normalizeJobPhotos, getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
 import {
   CheckCircle2,
   RefreshCw,
@@ -45,7 +45,7 @@ export default function JobDetailActions({
   const [beforePhotos, setBeforePhotos] = useState<JobPhoto[]>(initialBefore);
   const [afterPhotos, setAfterPhotos] = useState<JobPhoto[]>(initialAfter);
   const [selectedTechIds, setSelectedTechIds] = useState<string[]>(() =>
-    normalizeJobTechs(initialJob).map((t) => t.id)
+    resolveJobTechSelectionIds(initialJob, techs)
   );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -99,7 +99,11 @@ export default function JobDetailActions({
       .filter((t) => ids.includes(t.id))
       .map((t) => ({ id: t.id, name: t.name }));
     if (fromTeam.length > 0) return fromTeam;
-    return normalizeJobTechs(initialJob);
+    // Fall back: match legacy name-only assignments to team members
+    const resolvedIds = resolveJobTechSelectionIds(initialJob, techsRef.current);
+    return techsRef.current
+      .filter((t) => resolvedIds.includes(t.id))
+      .map((t) => ({ id: t.id, name: t.name }));
   };
 
   const getUpdates = () => ({

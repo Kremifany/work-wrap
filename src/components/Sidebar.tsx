@@ -218,9 +218,9 @@ export default function Sidebar({
         {sidebarContent}
       </aside>
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — fixed so it never scrolls with content */}
       <aside
-        className="hidden md:flex flex-col w-64 shrink-0 h-screen sticky top-0 overflow-hidden"
+        className="hidden md:flex fixed inset-y-0 left-0 z-30 w-64 flex-col overflow-hidden"
         aria-label="Navigation"
       >
         {sidebarContent}

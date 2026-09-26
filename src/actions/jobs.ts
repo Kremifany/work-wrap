@@ -295,7 +295,7 @@ export async function updateJobAction(
       ];
     }
 
-    // If customer changed, bump jobCount on new customer (best-effort)
+    // If customer changed, adjust jobCount on old/new customers
     if (
       updates.customerId !== undefined &&
       updates.customerId &&
@@ -308,6 +308,25 @@ export async function updateJobAction(
     }
 
     await adminDb.collection("jobs").doc(jobId).update(patch);
+
+    if (
+      updates.customerId !== undefined &&
+      updates.customerId !== job.customerId
+    ) {
+      if (job.customerId) {
+        await adminDb
+          .collection("customers")
+          .doc(job.customerId)
+          .update({ jobCount: FieldValue.increment(-1) });
+      }
+      if (updates.customerId) {
+        await adminDb
+          .collection("customers")
+          .doc(updates.customerId)
+          .update({ jobCount: FieldValue.increment(1) });
+      }
+    }
+
     // Autosave passes revalidate:false to avoid remount loops on the job page.
     if (options?.revalidate !== false) {
       revalidatePath(`/jobs/${jobId}`);
@@ -511,6 +530,12 @@ export async function deleteJobAction(jobId: string): Promise<ActionResult> {
     if (denied) return denied;
 
     await adminDb.collection("jobs").doc(jobId).delete();
+    if (job.customerId) {
+      await adminDb
+        .collection("customers")
+        .doc(job.customerId)
+        .update({ jobCount: FieldValue.increment(-1) });
+    }
     revalidatePath("/jobs");
     if (job.customerId) revalidatePath(`/customers/${job.customerId}`);
     return { success: true };

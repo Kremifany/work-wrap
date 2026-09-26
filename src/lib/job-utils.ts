@@ -26,6 +26,44 @@ export function normalizeJobTechs(
   return [];
 }
 
+/**
+ * Map a job's assigned techs onto real team member ids.
+ * Legacy jobs often store a name (or uid) that doesn't match `techs/{id}`,
+ * which made the list show a name while checkboxes stayed unchecked.
+ */
+export function resolveJobTechSelectionIds(
+  job: Pick<Job, "techId" | "techName" | "techs">,
+  team: Array<{ id: string; name: string }>
+): string[] {
+  const assigned = normalizeJobTechs(job);
+  if (assigned.length === 0 || team.length === 0) {
+    return assigned.map((t) => t.id);
+  }
+
+  const byId = new Map(team.map((t) => [t.id, t]));
+  const byName = new Map(
+    team.map((t) => [t.name.trim().toLowerCase(), t] as const)
+  );
+  const ids: string[] = [];
+
+  for (const a of assigned) {
+    const byExactId = byId.get(a.id);
+    if (byExactId) {
+      ids.push(byExactId.id);
+      continue;
+    }
+    const byExactName = byName.get(a.name.trim().toLowerCase());
+    if (byExactName) {
+      ids.push(byExactName.id);
+      continue;
+    }
+    // Keep unknown id so we don't silently drop an assignment
+    if (a.id) ids.push(a.id);
+  }
+
+  return [...new Set(ids)];
+}
+
 /** Display string for reports / lists — "Jane, John". */
 export function getJobTechniciansLabel(
   job: Pick<Job, "techId" | "techName" | "techs">
