@@ -304,63 +304,118 @@ export function CustomerServiceAddressesTable({ customer }: { customer: Customer
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="fp-table">
-            <thead>
-              <tr>
-                <th>Label</th>
-                <th>Service address</th>
-                <th>Primary</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.serviceAddresses.map((address) => (
-                <tr key={address.id}>
-                  <td className="font-medium text-sm">
-                    {address.label || <span className="text-neutral-400">—</span>}
-                  </td>
-                  <td className="text-sm text-neutral-700 max-w-md">
-                    {address.line1}
-                  </td>
-                  <td>
-                    {address.isPrimary ? (
-                      <Badge variant="info">Primary</Badge>
-                    ) : (
+        <>
+          {/* Mobile: stacked list */}
+          <ul className="md:hidden divide-y divide-neutral-100 rounded-lg border border-neutral-200 overflow-hidden">
+            {normalized.serviceAddresses.map((address) => (
+              <li key={address.id} className="px-4 py-3.5 space-y-2 bg-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-neutral-900 truncate">
+                      {address.label || "Address"}
+                    </p>
+                    <p className="text-sm text-neutral-500 mt-0.5 break-words">
+                      {address.line1}
+                    </p>
+                  </div>
+                  {address.isPrimary ? (
+                    <Badge variant="info" size="sm">
+                      Primary
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {!address.isPrimary && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => handleSetPrimary(address.id)}
+                      className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium"
+                    >
+                      <Star className="w-3.5 h-3.5" />
+                      Make primary
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => startEdit(address)}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => handleRemove(address.id)}
+                    className="text-xs font-medium text-error-600 hover:text-error-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="fp-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Service address</th>
+                  <th>Primary</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {normalized.serviceAddresses.map((address) => (
+                  <tr key={address.id}>
+                    <td className="font-medium text-sm">
+                      {address.label || <span className="text-neutral-400">—</span>}
+                    </td>
+                    <td className="text-sm text-neutral-700 max-w-md">
+                      {address.line1}
+                    </td>
+                    <td>
+                      {address.isPrimary ? (
+                        <Badge variant="info">Primary</Badge>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => handleSetPrimary(address.id)}
+                          className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium"
+                        >
+                          <Star className="w-3.5 h-3.5" />
+                          Make primary
+                        </button>
+                      )}
+                    </td>
+                    <td className="text-right whitespace-nowrap">
                       <button
                         type="button"
                         disabled={pending}
-                        onClick={() => handleSetPrimary(address.id)}
-                        className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium"
+                        onClick={() => startEdit(address)}
+                        className="text-sm font-medium text-brand-600 hover:text-brand-700 mr-3"
                       >
-                        <Star className="w-3.5 h-3.5" />
-                        Make primary
+                        Edit
                       </button>
-                    )}
-                  </td>
-                  <td className="text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => startEdit(address)}
-                      className="text-sm font-medium text-brand-600 hover:text-brand-700 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => handleRemove(address.id)}
-                      className="text-sm font-medium text-error-600 hover:text-error-700"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => handleRemove(address.id)}
+                        className="text-sm font-medium text-error-600 hover:text-error-700"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {(showAdd || editingId) && (

@@ -12,7 +12,7 @@ import {
 } from "@/components/CustomerForms";
 import { CustomerActivityTimeline } from "@/components/CustomerActivityTimeline";
 import { normalizeCustomer } from "@/lib/customer-utils";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { Customer, Interaction, Job } from "@/types";
 
 export async function generateMetadata({
@@ -79,7 +79,7 @@ export default async function CustomerDetailPage({
       <div>
         <h1 className="text-2xl font-bold text-brand-900">{customer.name}</h1>
         <p className="text-neutral-500 text-sm mt-0.5">
-          {customer.jobCount} job{customer.jobCount !== 1 ? "s" : ""} &middot; Since{" "}
+          {jobs.length} job{jobs.length !== 1 ? "s" : ""} &middot; Since{" "}
           {formatDate(customer.createdAt)}
         </p>
       </div>
@@ -125,55 +125,40 @@ export default async function CustomerDetailPage({
             <p className="text-neutral-400 text-sm">No jobs for this customer yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="fp-table">
-              <thead>
-                <tr>
-                  <th>Job</th>
-                  <th>Address</th>
-                  <th>Created</th>
-                  <th>Report sent</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.id}>
-                    <td className="font-medium">{getJobTitle(job)}</td>
-                    <td className="text-neutral-500 text-sm max-w-xs truncate">
-                      {job.jobAddress || "—"}
-                    </td>
-                    <td className="text-neutral-500 text-sm whitespace-nowrap">
-                      {formatDate(job.createdAt)}
-                    </td>
-                    <td className="text-neutral-500 text-sm whitespace-nowrap">
-                      {job.reportSentAt ? (
-                        <span className="text-success-700">{formatDateTime(job.reportSentAt)}</span>
-                      ) : (
-                        <span className="text-neutral-400">Not sent</span>
-                      )}
-                    </td>
-                    <td>
-                      <Badge
-                        variant={job.status === "completed" ? "success" : "warning"}
-                      >
-                        {job.status === "completed" ? "Completed" : "Draft"}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Link
-                        href={`/jobs/${job.id}`}
-                        className="text-brand-600 hover:text-brand-700 text-sm font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-neutral-100">
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <Link
+                  href={`/jobs/${job.id}`}
+                  className="flex items-center gap-3 px-4 sm:px-6 py-3.5 hover:bg-neutral-50 active:bg-neutral-50 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-neutral-900 truncate">
+                      {getJobTitle(job)}
+                    </p>
+                    <p className="text-sm text-neutral-500 truncate mt-0.5">
+                      {[
+                        job.jobAddress || null,
+                        formatDate(job.createdAt),
+                        job.reportSentAt
+                          ? `Report ${formatDateTime(job.reportSentAt)}`
+                          : "Report not sent",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={job.status === "completed" ? "success" : "warning"}
+                    size="sm"
+                  >
+                    {job.status === "completed" ? "Done" : "Draft"}
+                  </Badge>
+                  <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

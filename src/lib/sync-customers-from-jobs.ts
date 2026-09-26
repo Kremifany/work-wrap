@@ -1,6 +1,5 @@
 import "server-only";
 
-import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase-admin";
 import {
   buildServiceAddressesFromInput,
@@ -17,6 +16,7 @@ function contactKey(name: string, email: string, phone: string): string {
 /**
  * Ensure CRM customer records exist for job contacts.
  * Creates missing customers from denormalized job fields and links orphan jobs.
+ * Reconciles `jobCount` from actual linked jobs (the stored counter drifts).
  */
 export async function syncCustomersFromJobs(
   businessId: string
@@ -38,6 +38,12 @@ export async function syncCustomersFromJobs(
   const jobs = jobsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Job));
   let created = 0;
   let linked = 0;
+  /** Actual jobs per customer after linking (source of truth for jobCount). */
+  const jobCounts = new Map<string, number>();
+
+  const bumpCount = (customerId: string) => {
+    jobCounts.set(customerId, (jobCounts.get(customerId) ?? 0) + 1);
+  };
 
   for (const job of jobs) {
     const name = (job.customerName ?? "").trim();
@@ -72,6 +78,7 @@ export async function syncCustomersFromJobs(
       byId.set(customer.id, customer);
       byContact.set(contactKey(name, email, phone), customer);
       created += 1;
+      bumpCount(customer.id);
 
       if (job.customerId !== customer.id) {
         await adminDb.collection("jobs").doc(job.id).update({ customerId: customer.id });
@@ -80,22 +87,13 @@ export async function syncCustomersFromJobs(
       continue;
     }
 
-    // Link orphan job to existing CRM record
+    // Link orphan / mismatched job to existing CRM record
     if (!job.customerId || job.customerId !== customer.id) {
       await adminDb.collection("jobs").doc(job.id).update({ customerId: customer.id });
       linked += 1;
-      if (!job.customerId) {
-        await adminDb
-          .collection("customers")
-          .doc(customer.id)
-          .update({ jobCount: FieldValue.increment(1) });
-        customer = {
-          ...customer,
-          jobCount: (customer.jobCount ?? 0) + 1,
-        };
-        byId.set(customer.id, customer);
-      }
     }
+
+    bumpCount(customer.id);
 
     // Import job address into serviceAddresses if missing
     if (address) {
@@ -126,6 +124,18 @@ export async function syncCustomersFromJobs(
       }
     }
   }
+
+  // Reconcile stored jobCount with linked jobs (fixes stale "2 jobs" badges)
+  const writes: Promise<unknown>[] = [];
+  for (const c of byId.values()) {
+    const actual = jobCounts.get(c.id) ?? 0;
+    if ((c.jobCount ?? 0) !== actual) {
+      writes.push(
+        adminDb.collection("customers").doc(c.id).update({ jobCount: actual })
+      );
+    }
+  }
+  if (writes.length > 0) await Promise.all(writes);
 
   return { created, linked };
 }

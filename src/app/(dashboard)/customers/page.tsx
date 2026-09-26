@@ -8,7 +8,7 @@ import {
   normalizeCustomer,
 } from "@/lib/customer-utils";
 import { syncCustomersFromJobs } from "@/lib/sync-customers-from-jobs";
-import { Mail, MapPin, Phone, Plus, Users } from "lucide-react";
+import { ChevronRight, Mail, MapPin, Phone, Plus, Users } from "lucide-react";
 import type { Customer } from "@/types";
 
 export const metadata = { title: "Customers | Job Tracker Pro" };
@@ -109,95 +109,129 @@ export default async function CustomersPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="fp-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Primary address</th>
-                  <th>Jobs</th>
-                  <th>Since</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((c) => {
-                  const primaryAddress = getPrimaryAddressLine(c);
-                  return (
-                    <tr key={c.id}>
-                      <td>
-                        <Link
-                          href={`/customers/${c.id}`}
-                          className="font-medium text-neutral-900 hover:text-brand-700"
-                        >
-                          {c.name}
-                        </Link>
-                      </td>
-                      <td>
-                        {c.email ? (
-                          <a
-                            href={`mailto:${c.email}`}
-                            className="inline-flex items-center gap-1.5 text-brand-600 hover:underline text-sm"
+          <>
+            {/* Mobile: compact clickable list */}
+            <ul className="md:hidden divide-y divide-neutral-100">
+              {customers.map((c) => {
+                const primaryAddress = getPrimaryAddressLine(c);
+                const subtitle =
+                  (c.phone ? formatPhoneNumber(c.phone) : null) ||
+                  c.email.trim() ||
+                  primaryAddress ||
+                  "No contact info";
+                return (
+                  <li key={c.id}>
+                    <Link
+                      href={`/customers/${c.id}`}
+                      className="flex items-center gap-3 px-4 py-3.5 active:bg-neutral-50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-neutral-900 truncate">{c.name}</p>
+                        <p className="text-sm text-neutral-500 truncate mt-0.5">
+                          {subtitle}
+                        </p>
+                      </div>
+                      <Badge variant="default" size="sm">
+                        {c.jobCount} {c.jobCount === 1 ? "job" : "jobs"}
+                      </Badge>
+                      <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Desktop: full table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="fp-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Primary address</th>
+                    <th>Jobs</th>
+                    <th>Since</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.map((c) => {
+                    const primaryAddress = getPrimaryAddressLine(c);
+                    return (
+                      <tr key={c.id}>
+                        <td>
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="font-medium text-neutral-900 hover:text-brand-700"
                           >
-                            <Mail className="w-3.5 h-3.5 shrink-0" />
-                            {c.email}
-                          </a>
-                        ) : (
-                          <span className="text-neutral-400 text-sm">—</span>
-                        )}
-                      </td>
-                      <td>
-                        {c.phone ? (
-                          <a
-                            href={`tel:${phoneTelHref(c.phone)}`}
-                            className="inline-flex items-center gap-1.5 text-neutral-700 hover:text-brand-600 text-sm"
-                          >
-                            <Phone className="w-3.5 h-3.5 shrink-0" />
-                            {formatPhoneNumber(c.phone)}
-                          </a>
-                        ) : (
-                          <span className="text-neutral-400 text-sm">—</span>
-                        )}
-                      </td>
-                      <td className="text-neutral-500 text-sm max-w-xs">
-                        {primaryAddress ? (
-                          <span className="inline-flex items-start gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-400" />
-                            <span className="truncate">
-                              {primaryAddress}
-                              {c.serviceAddresses.length > 1 && (
-                                <span className="ml-1 text-xs text-neutral-400">
-                                  (+{c.serviceAddresses.length - 1} more)
-                                </span>
-                              )}
+                            {c.name}
+                          </Link>
+                        </td>
+                        <td>
+                          {c.email ? (
+                            <a
+                              href={`mailto:${c.email}`}
+                              className="inline-flex items-center gap-1.5 text-brand-600 hover:underline text-sm"
+                            >
+                              <Mail className="w-3.5 h-3.5 shrink-0" />
+                              {c.email}
+                            </a>
+                          ) : (
+                            <span className="text-neutral-400 text-sm">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {c.phone ? (
+                            <a
+                              href={`tel:${phoneTelHref(c.phone)}`}
+                              className="inline-flex items-center gap-1.5 text-neutral-700 hover:text-brand-600 text-sm"
+                            >
+                              <Phone className="w-3.5 h-3.5 shrink-0" />
+                              {formatPhoneNumber(c.phone)}
+                            </a>
+                          ) : (
+                            <span className="text-neutral-400 text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="text-neutral-500 text-sm max-w-xs">
+                          {primaryAddress ? (
+                            <span className="inline-flex items-start gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-400" />
+                              <span className="truncate">
+                                {primaryAddress}
+                                {c.serviceAddresses.length > 1 && (
+                                  <span className="ml-1 text-xs text-neutral-400">
+                                    (+{c.serviceAddresses.length - 1} more)
+                                  </span>
+                                )}
+                              </span>
                             </span>
-                          </span>
-                        ) : (
-                          <span className="text-neutral-400">—</span>
-                        )}
-                      </td>
-                      <td>
-                        <Badge variant="default">{c.jobCount}</Badge>
-                      </td>
-                      <td className="text-neutral-500 text-sm">
-                        {formatDate(c.createdAt)}
-                      </td>
-                      <td>
-                        <Link
-                          href={`/customers/${c.id}`}
-                          className="text-brand-600 hover:text-brand-700 text-sm font-medium"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          ) : (
+                            <span className="text-neutral-400">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <Badge variant="default">{c.jobCount}</Badge>
+                        </td>
+                        <td className="text-neutral-500 text-sm">
+                          {formatDate(c.createdAt)}
+                        </td>
+                        <td>
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="text-brand-600 hover:text-brand-700 text-sm font-medium"
+                          >
+                            View
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

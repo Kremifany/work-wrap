@@ -93,8 +93,8 @@ export default async function JobDetailPage({
       </Link>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-900">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold text-brand-900 break-words">
             {jobTitle} — {job.customerName || "Unknown Customer"}
           </h1>
           <div className="flex items-center gap-3 mt-1 flex-wrap">

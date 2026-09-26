@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import Sidebar from "@/components/Sidebar";
+import ScrollToTopOnNavigate from "@/components/ScrollToTopOnNavigate";
 import type { ReactNode } from "react";
 
 export default async function DashboardLayout({
@@ -25,7 +26,8 @@ export default async function DashboardLayout({
   const role = session.role;
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
+    <div className="flex h-dvh max-h-dvh bg-neutral-50 overflow-hidden">
+      <ScrollToTopOnNavigate />
       <Sidebar
         businessName={businessName}
         userName={userName}
@@ -33,8 +35,11 @@ export default async function DashboardLayout({
         plan={plan}
         role={role}
       />
-      {/* Page content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Page content — only this column scrolls; offset for fixed sidebar */}
+      <div
+        id="dashboard-scroll"
+        className="flex-1 flex flex-col min-w-0 h-dvh max-h-dvh overflow-y-auto overflow-x-hidden md:ml-64"
+      >
         {/* Spacer for mobile top bar */}
         <div className="md:hidden h-14 shrink-0" />
         <main className="flex-1 p-4 md:p-8 max-w-6xl w-full mx-auto">
