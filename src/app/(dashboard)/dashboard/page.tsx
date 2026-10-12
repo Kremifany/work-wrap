@@ -100,15 +100,11 @@ export default async function DashboardPage({
             New Job
           </Link>
         </div>
-        {showOnboarding ? (
+        {showOnboarding && (
           <DashboardOnboarding
             firstName={firstName}
             businessName={session.business.name}
           />
-        ) : (
-          <p className="text-neutral-500 text-sm">
-            Welcome back, {firstName}
-          </p>
         )}
       </div>
 
