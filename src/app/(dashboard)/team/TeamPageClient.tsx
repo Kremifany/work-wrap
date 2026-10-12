@@ -133,7 +133,7 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
                 className="px-6 py-4 flex items-center gap-4 flex-wrap"
               >
                 <Link
-                  href={`/jobs?techId=${encodeURIComponent(tech.id)}`}
+                  href={`/team/${tech.id}`}
                   className="flex items-center gap-4 flex-1 min-w-0 rounded-lg -mx-2 px-2 py-1 hover:bg-neutral-50 transition-colors group"
                 >
                   <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm shrink-0">
@@ -165,9 +165,6 @@ export default function TeamPageClient({ techs, plan }: TeamPageClientProps) {
                     <p className="text-sm text-neutral-500 mt-0.5">
                       {tech.email}
                       {tech.phone ? ` · ${formatPhoneNumber(tech.phone)}` : ""}
-                      <span className="ml-2 text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        View jobs
-                      </span>
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-brand-600 shrink-0" />
