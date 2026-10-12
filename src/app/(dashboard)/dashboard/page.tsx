@@ -8,7 +8,6 @@ import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
   ClipboardList,
   Users,
-  CheckCircle2,
   Clock,
   Plus,
   ArrowRight,
@@ -38,7 +37,6 @@ async function getStats(businessId: string): Promise<DashboardStats> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   return {
-    completedJobs: jobs.filter((j) => j.status === "completed").length,
     draftJobs: jobs.filter((j) => j.status === "draft").length,
     totalCustomers: customersSnap.size,
     jobsThisMonth: jobs.filter((j) => j.createdAt >= monthStart).length,
@@ -109,15 +107,6 @@ export default async function DashboardPage({
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="stat-label">Completed</p>
-              <p className="stat-value text-success-700">{stats.completedJobs}</p>
-            </div>
-            <CheckCircle2 className="w-6 h-6 text-success-400 mt-1" />
-          </div>
-        </div>
         <div className="stat-card">
           <div className="flex items-start justify-between">
             <div>
