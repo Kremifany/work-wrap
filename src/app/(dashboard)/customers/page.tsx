@@ -11,7 +11,7 @@ import { syncCustomersFromJobs } from "@/lib/sync-customers-from-jobs";
 import { ChevronRight, Mail, MapPin, Phone, Plus, Users } from "lucide-react";
 import type { Customer } from "@/types";
 
-export const metadata = { title: "Customers | Job Tracker Pro" };
+export const metadata = { title: "Customers" };
 
 export default async function CustomersPage() {
   const session = await requireSession();

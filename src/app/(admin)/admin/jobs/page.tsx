@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase-admin";
 import type { Job } from "@/types";
 
-export const metadata: Metadata = { title: "Admin – Jobs | Job Tracker Pro" };
+export const metadata: Metadata = { title: "Admin – Jobs" };
 
 export default async function AdminJobsPage() {
   const snap = await adminDb

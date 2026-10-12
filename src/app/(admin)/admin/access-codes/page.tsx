@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import AccessCodesClient from "./AccessCodesClient";
 import type { BetaAccessCode } from "@/types";
 
-export const metadata: Metadata = { title: "Admin – Beta Access Codes | Job Tracker Pro" };
+export const metadata: Metadata = { title: "Admin – Beta Access Codes" };
 
 async function getAccessCodes(): Promise<BetaAccessCode[]> {
   const snap = await adminDb

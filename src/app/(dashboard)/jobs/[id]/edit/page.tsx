@@ -18,9 +18,9 @@ export async function generateMetadata({
     const snap = await adminDb.collection("jobs").doc(id).get();
     if (!snap.exists) return { title: "Edit Job" };
     const job = normalizeJob({ id: snap.id, ...snap.data() } as Job);
-    return { title: `Edit ${getJobTitle(job)} | Job Tracker Pro` };
+    return { title: `Edit ${getJobTitle(job)}` };
   } catch {
-    return { title: "Edit Job | Job Tracker Pro" };
+    return { title: "Edit Job" };
   }
 }
 

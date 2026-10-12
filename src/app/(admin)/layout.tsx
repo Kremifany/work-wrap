@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <span className="text-xs font-bold text-white">A</span>
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-900">Job Tracker Pro Admin</span>
+              <span className="text-sm font-bold text-slate-900">Work Wrap Admin</span>
               <p className="text-xs text-slate-400">{session.user.email}</p>
             </div>
           </div>

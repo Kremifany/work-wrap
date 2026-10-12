@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/auth-session";
 import { NewCustomerForm } from "@/components/CustomerForms";
 
-export const metadata = { title: "New Customer | Job Tracker Pro" };
+export const metadata = { title: "New Customer" };
 
 export default async function NewCustomerPage() {
   await requireSession();

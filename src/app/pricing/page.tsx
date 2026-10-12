@@ -4,16 +4,16 @@ import { CheckCircle, X, ChevronRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Pricing – Plans for Service Businesses | Job Tracker Pro",
+  title: "Pricing – Plans for Service Businesses",
   description:
-    "Job Tracker Pro plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses everywhere.",
+    "Work Wrap plans start free and scale to $99/month. Unlimited jobs, team technicians, and fully branded PDF reports for HVAC, garage door, plumbing, and electrical businesses everywhere.",
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
+    canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://workwrapapp.com"}/pricing`,
   },
   openGraph: {
-    title:       "Job Tracker Pro Pricing – Free to $99/month for Service Businesses",
+    title:       "Work Wrap Pricing – Free to $99/month for Service Businesses",
     description: "Start free. Upgrade when you grow. Simple, honest pricing for HVAC, garage door, plumbing, and electrical teams.",
-    url:         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com"}/pricing`,
+    url:         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://workwrapapp.com"}/pricing`,
     type:        "website",
   },
 };
@@ -95,8 +95,7 @@ export default function PricingPage() {
       <header className="border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link href="/" className="flex items-center gap-1">
-            <span className="text-xl font-bold text-brand-800">Job Tracker</span>
-            <span className="text-xl font-bold text-accent-700">Pro</span>
+            <span className="text-xl font-bold text-brand-800">Work Wrap</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login"><Button variant="ghost" size="sm">Sign in</Button></Link>
@@ -207,7 +206,7 @@ export default function PricingPage() {
           <Link href="/login"   className="hover:text-slate-700">Sign In</Link>
         </div>
         <p className="mt-2 text-xs text-slate-400">
-          &copy; {new Date().getFullYear()} Job Tracker Pro — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600">Clip Logic LLC</a> product.
+          &copy; {new Date().getFullYear()} Work Wrap — a <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600">Clip Logic LLC</a> product.
         </p>
       </footer>
     </div>

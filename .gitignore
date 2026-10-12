@@ -45,3 +45,10 @@ next-env.d.ts
 /public/sw.js
 /public/sw.js.map
 /public/swe-worker*
+
+# local agent tooling
+.agents/
+_bmad/
+_bmad-output/
+_bmad.setup-*/
+skills-lock.json

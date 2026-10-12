@@ -114,7 +114,7 @@ async function savePdfToStorage(
   const bucket = adminStorage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
   const filePath = `reports/${businessId}/${jobId}/report.pdf`;
   const file = bucket.file(filePath);
-  const safeName = filename.replace(/["\\\r\n]/g, "") || "jobtracker-report.pdf";
+  const safeName = filename.replace(/["\\\r\n]/g, "") || "work-wrap-report.pdf";
   await file.save(Buffer.from(pdfBytes), {
     contentType: "application/pdf",
     resumable: false,
@@ -151,6 +151,7 @@ function buildJobPayload(input: {
 // ── Create draft job ─────────────────────────────────────────────────────────
 
 export interface CreateJobInput {
+  draftKey: string;
   techId: string;
   techName: string;
   techs: JobAssignedTech[];
@@ -180,11 +181,22 @@ export async function createJobAction(
     if (!session) return { success: false, error: "Not authenticated." };
     if (!session.business) return { success: false, error: "Business profile not found." };
 
+    const techs = parsed.data.techs;
+    const primary = techs[0];
+    const draftKey = parsed.data.draftKey;
+    const ref = adminDb.collection("jobs").doc(draftKey);
+
+    const existing = await ref.get();
+    if (existing.exists) {
+      if (existing.data()?.businessId !== session.business.id) {
+        return { success: false, error: "Could not save this job. Please try again." };
+      }
+      return { success: true, data: { jobId: ref.id } };
+    }
+
     const limitError = await checkJobLimit(session.business.id, session.business.plan);
     if (limitError) return { success: false, error: limitError };
 
-    const techs = parsed.data.techs;
-    const primary = techs[0];
     const now = new Date().toISOString();
     const jobData: Omit<Job, "id"> = {
       businessId: session.business.id,
@@ -202,8 +214,20 @@ export async function createJobAction(
       completedAt: null,
       reportSentAt: null,
       createdAt: now,
+      draftKey,
     };
-    const ref = await adminDb.collection("jobs").add(jobData);
+    try {
+      await ref.create(jobData);
+    } catch (err) {
+      const code = (err as { code?: number | string }).code;
+      const alreadyExists = code === 6 || code === "already-exists" || code === "ALREADY_EXISTS";
+      if (!alreadyExists) throw err;
+      const raced = await ref.get();
+      if (!raced.exists || raced.data()?.businessId !== session.business.id) {
+        return { success: false, error: "Could not save this job. Please try again." };
+      }
+      return { success: true, data: { jobId: ref.id } };
+    }
 
     if (input.customerId) {
       await adminDb

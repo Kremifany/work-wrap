@@ -26,6 +26,8 @@ export const jobPhotoSchema = z.object({
 });
 
 export const createJobSchema = z.object({
+  /** Stable id for this form. Repeating the save reuses the same job. */
+  draftKey:      z.string().trim().regex(/^[A-Za-z0-9_-]{16,80}$/, "Invalid job draft key."),
   techId:        nonEmptyString(128),
   techName:      nonEmptyString(100),
   techs: z

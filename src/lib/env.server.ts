@@ -9,7 +9,7 @@ const serverEnvSchema = z.object({
   FIREBASE_STORAGE_BUCKET: z.string().min(1),
   RESEND_API_KEY:          z.string().min(1),
   /** Verified sender in Resend. Use onboarding@resend.dev until your domain is verified. */
-  RESEND_FROM:             z.string().min(1).default("Job Tracker <reports@jobtrackerproapp.com>"),
+  RESEND_FROM:             z.string().min(1).default("Work Wrap <reports@workwrapapp.com>"),
   NEXT_PUBLIC_APP_URL:     z.string().url(),
   STRIPE_SECRET_KEY:       z.string().optional().default(""),
   STRIPE_WEBHOOK_SECRET:   z.string().default(""),

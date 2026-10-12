@@ -1,10 +1,10 @@
-# Job Tracker Pro — v1 Beta
+# Work Wrap — v1 Beta
 
 Simple SaaS for tradespeople to document jobs and send professional **before/after inspection reports** to customers.
 
 **Core loop:** Create job → Upload before/after photos → Add notes → Generate PDF → Email client
 
-Built as a Next.js monolith on the existing `job_tracker_pro` stack (Firebase + pdf-lib + Resend). Phase 2+ items (client portal, Stripe Connect, scheduling, SMS, R2 migration) are intentionally deferred.
+Built as a Next.js monolith on the existing Work Wrap stack (Firebase + pdf-lib + Resend). Phase 2+ items (client portal, Stripe Connect, scheduling, SMS, R2 migration) are intentionally deferred.
 
 ## v1 Scope (P0)
 
@@ -119,7 +119,7 @@ Estimated beta cost: ~$25–40/mo (Firebase free tier + Vercel + Resend).
 
 ## Internal (Clip Logic)
 
-Use Job Tracker on real client projects to dogfood the inspection report flow before wider beta launch.
+Use Work Wrap on real client projects to dogfood the inspection report flow before wider beta launch.
 
 ---
 

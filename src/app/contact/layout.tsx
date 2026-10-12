@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://workwrapapp.com";
 
 export const metadata: Metadata = {
-  title: "Contact Support \u2013 Job Tracker Pro",
+  title: "Contact Support",
   description:
-    "Get help with your Job Tracker Pro account. Contact our support team for account, billing, or technical questions. Built for service businesses everywhere.",
+    "Get help with your Work Wrap account. Contact our support team for account, billing, or technical questions. Built for service businesses everywhere.",
   alternates: { canonical: `${APP_URL}/contact` },
   openGraph: {
-    title:       "Contact Job Tracker Pro Support",
+    title:       "Contact Work Wrap Support",
     description: "We personally read every message and respond within one business day.",
     url:         `${APP_URL}/contact`,
     type:        "website",

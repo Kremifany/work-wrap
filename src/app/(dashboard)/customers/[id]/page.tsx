@@ -23,7 +23,7 @@ export async function generateMetadata({
   const { id } = await params;
   const snap = await adminDb.collection("customers").doc(id).get();
   const name = snap.data()?.name ?? "Customer";
-  return { title: `${name} | Job Tracker Pro` };
+  return { title: name };
 }
 
 export default async function CustomerDetailPage({

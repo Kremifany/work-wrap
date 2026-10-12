@@ -4,7 +4,7 @@ import JobForm from "@/components/job/JobForm";
 import { normalizeCustomer, getPrimaryAddressLine } from "@/lib/customer-utils";
 import type { Customer, Tech } from "@/types";
 
-export const metadata = { title: "New Job | Job Tracker Pro" };
+export const metadata = { title: "New Job" };
 
 export default async function NewJobPage({
   searchParams,

@@ -132,13 +132,13 @@ export function normalizeJob<T extends Job>(job: T): T {
   };
 }
 
-/** `{job-slug}-{customer-slug}-jobtracker.pdf` — readable download / email attachment name. */
+/** `{job-slug}-{customer-slug}-work-wrap.pdf` — readable download / email attachment name. */
 export function getReportFilename(
   job: Pick<Job, "title" | "jobType" | "customerName" | "completedAt" | "createdAt">
 ): string {
   const jobSlug = slugify(getJobTitle(job)) || "job";
   const customerSlug = slugify(job.customerName?.trim() || "") || "customer";
-  return `${jobSlug}-${customerSlug}-jobtracker.pdf`;
+  return `${jobSlug}-${customerSlug}-work-wrap.pdf`;
 }
 
 export function getCompletedDate(job: Pick<Job, "completedAt" | "createdAt">): string {

@@ -23,7 +23,7 @@ const STEPS = [
     icon: UserCircle,
     title: "You're all set!",
     body: (first: string, business: string) =>
-      `Hi ${first} — welcome to Job Tracker Pro. This dashboard is your home base for ${business}. Here's how to get your first report out the door.`,
+      `Hi ${first} — welcome to Work Wrap. This dashboard is your home base for ${business}. Here's how to get your first report out the door.`,
   },
   {
     icon: Users,

@@ -8,7 +8,7 @@ import {
 } from "@/lib/stripe-billing-sync";
 import type { Business } from "@/types";
 
-export const metadata = { title: "Billing | Job Tracker Pro" };
+export const metadata = { title: "Billing" };
 
 export default async function BillingPage({
   searchParams,

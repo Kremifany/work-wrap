@@ -16,10 +16,10 @@ interface SendReportEmailOptions {
 }
 
 function formatFromAddress(businessName: string): string {
-  const safeName = businessName.replace(/[<>"]/g, "").trim() || "Job Tracker";
+  const safeName = businessName.replace(/[<>"]/g, "").trim() || "Work Wrap";
   const match = serverEnv.RESEND_FROM.match(/<([^>]+)>/);
   const email = match?.[1] ?? serverEnv.RESEND_FROM;
-  return `${safeName} via Job Tracker <${email}>`;
+  return `${safeName} via Work Wrap <${email}>`;
 }
 
 export async function sendReportEmail({
@@ -102,7 +102,7 @@ export async function sendReportEmail({
     <div style="padding:24px 32px;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="margin:0;font-size:12px;color:#94a3b8;">
         Sent via
-        <a href="${serverEnv.NEXT_PUBLIC_APP_URL}" style="color:#1E5AA8;">Job Tracker</a>
+        <a href="${serverEnv.NEXT_PUBLIC_APP_URL}" style="color:#1E5AA8;">Work Wrap</a>
       </p>
     </div>
   </div>

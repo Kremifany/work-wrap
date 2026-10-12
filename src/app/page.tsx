@@ -19,8 +19,7 @@ function MarketingNav() {
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-1">
-          <span className="text-xl font-bold text-brand-800">Job Tracker</span>
-          <span className="text-xl font-bold text-accent-700">Pro</span>
+          <span className="text-xl font-bold text-brand-800">Work Wrap</span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 sm:flex">
           <Link href="/pricing"      className="hover:text-brand-800">Pricing</Link>
@@ -49,16 +48,16 @@ const features = [
 ];
 
 const steps = [
-  { n: "1", title: "Tech completes the job",         desc: "Your technician opens Job Tracker Pro on their phone, fills in customer info, checks off the job checklist, snaps a few photos." },
-  { n: "2", title: 'Tap "Complete & Send Report"',   desc: "Job Tracker Pro instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
+  { n: "1", title: "Tech completes the job",         desc: "Your technician opens Work Wrap on their phone, fills in customer info, checks off the job checklist, snaps a few photos." },
+  { n: "2", title: 'Tap "Complete & Send Report"',   desc: "Work Wrap instantly generates a branded PDF report with all checklist items, notes, and photos embedded." },
   { n: "3", title: "Customer receives their report", desc: "The PDF arrives in the customer's email within seconds — professional, branded, and complete." },
 ];
 
 const faqs = [
-  { q: "Do I need to install anything?",           a: "No. Job Tracker Pro is 100% web-based. Your techs open a link on their phone — no app store needed." },
-  { q: "Which industries does Job Tracker Pro support?",a: "HVAC, garage door, plumbing, electrical, and general service — with built-in checklist templates for each." },
+  { q: "Do I need to install anything?",           a: "No. Work Wrap is 100% web-based. Your techs open a link on their phone — no app store needed." },
+  { q: "Which industries does Work Wrap support?",a: "HVAC, garage door, plumbing, electrical, and general service — with built-in checklist templates for each." },
   { q: "Is it really free?",                        a: "Yes. The Free plan includes 5 jobs per month and 1 technician. Perfect for getting started." },
-  { q: "Where can I use Job Tracker Pro?", a: "Anywhere. Job Tracker Pro works for service businesses of any size — HVAC, garage door, plumbing, electrical, and more — in any city or country with a phone and internet." },
+  { q: "Where can I use Work Wrap?", a: "Anywhere. Work Wrap works for service businesses of any size — HVAC, garage door, plumbing, electrical, and more — in any city or country with a phone and internet." },
 ];
 
 export default function LandingPage() {
@@ -97,7 +96,7 @@ export default function LandingPage() {
               <span className="text-accent-500">to Sloppy Paper Forms</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-brand-200 sm:text-xl">
-              Job Tracker Pro lets your HVAC, garage door, and plumbing techs complete a digital
+              Work Wrap lets your HVAC, garage door, and plumbing techs complete a digital
               checklist with photos on their phone — then auto-emails a branded PDF report
               to the customer <strong className="text-white">before they leave the driveway</strong>.
             </p>
@@ -222,7 +221,7 @@ export default function LandingPage() {
         <section className="px-4 py-20 text-center">
           <h2 className="page-title">Ready to Impress Every Customer?</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
-            Join service businesses already saving time and winning more referrals with Job Tracker Pro.
+            Join service businesses already saving time and winning more referrals with Work Wrap.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link href="/register" prefetch><Button size="lg">Create Free Account <ChevronRight className="h-4 w-4" /></Button></Link>
@@ -236,8 +235,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
               <div className="col-span-2 sm:col-span-1">
                 <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold text-white">Job Tracker</span>
-                  <span className="text-lg font-bold text-accent-500">Pro</span>
+                  <span className="text-lg font-bold text-white">Work Wrap</span>
                 </div>
                 <p className="mt-2 text-sm text-slate-400">Job completion reports for service businesses everywhere.</p>
                 <p className="mt-1 text-xs text-slate-500">By <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Clip Logic LLC</a></p>
@@ -271,7 +269,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs text-slate-500">
-              © {new Date().getFullYear()} Job Tracker Pro by <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clip Logic LLC</a>. Built for service businesses everywhere.
+              © {new Date().getFullYear()} Work Wrap by <a href="https://cliplogicpro.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clip Logic LLC</a>. Built for service businesses everywhere.
             </div>
           </div>
         </footer>
