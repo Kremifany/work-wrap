@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "..", "public", "icons");
+const appDir = join(__dirname, "..", "src", "app");
 
 const BRAND = [30, 58, 138]; // #1e3a8a brand-900
 const WHITE = [255, 255, 255];
@@ -140,8 +141,44 @@ const specs = [
   { file: "apple-touch-icon.png", size: 180, maskable: false },
 ];
 
+function encodeIco(images) {
+  const count = images.length;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(count, 4);
+  const dir = Buffer.alloc(16 * count);
+  let offset = 6 + 16 * count;
+  const parts = [header, dir];
+  images.forEach(({ size, png }, i) => {
+    const e = i * 16;
+    dir[e] = size >= 256 ? 0 : size;
+    dir[e + 1] = size >= 256 ? 0 : size;
+    dir.writeUInt16LE(1, e + 4);
+    dir.writeUInt16LE(32, e + 6);
+    dir.writeUInt32LE(png.length, e + 8);
+    dir.writeUInt32LE(offset, e + 12);
+    offset += png.length;
+    parts.push(png);
+  });
+  return Buffer.concat(parts);
+}
+
 for (const { file, size, maskable } of specs) {
   const png = encodePng(size, (x, y, s) => drawIcon(x, y, s, { maskable }));
   writeFileSync(join(outDir, file), png);
   console.log(`Wrote ${file} (${png.length} bytes)`);
 }
+
+const tabIcon = encodePng(192, (x, y, s) => drawIcon(x, y, s));
+writeFileSync(join(appDir, "icon.png"), tabIcon);
+console.log(`Wrote src/app/icon.png (${tabIcon.length} bytes)`);
+
+const ico = encodeIco(
+  [32, 48].map((size) => ({
+    size,
+    png: encodePng(size, (x, y, s) => drawIcon(x, y, s)),
+  }))
+);
+writeFileSync(join(appDir, "favicon.ico"), ico);
+console.log(`Wrote src/app/favicon.ico (${ico.length} bytes)`);
