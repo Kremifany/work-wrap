@@ -152,8 +152,11 @@ export default function JobForm({
       return;
     }
 
+    const selfTech = techs.find((t) => t.uid === session.user.uid) ?? session.tech;
     const assignedTechs =
-      techs.length > 0
+      session.role === "tech" && selfTech
+        ? [{ id: selfTech.id, name: selfTech.name }]
+        : techs.length > 0
         ? techs
             .filter((t) => selectedTechIds.includes(t.id))
             .map((t) => ({ id: t.id, name: t.name }))
@@ -333,6 +336,7 @@ export default function JobForm({
         )}
       </section>
 
+      {session.role === "owner" && (
       <section className="job-form-section">
         <h2 className="section-title">Technicians</h2>
         <p className="text-sm text-neutral-500 mb-3">
@@ -344,6 +348,7 @@ export default function JobForm({
           onChange={setSelectedTechIds}
         />
       </section>
+      )}
 
       <section className="job-form-section">
         <h2 className="section-title">Job Details</h2>

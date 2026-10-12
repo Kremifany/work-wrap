@@ -138,6 +138,18 @@ export interface Job {
   draftKey?: string;
 }
 
+/** One recorded change on a job, kept so the owner can look it up later. */
+export interface JobChange {
+  id: string;
+  businessId: string;
+  jobId: string;
+  jobTitle: string;
+  summary: string;
+  createdByUid: string;
+  createdByName: string;
+  createdAt: string;
+}
+
 // ─── Beta access ─────────────────────────────────────────────────────────────
 export interface BetaAccessCode {
   id: string;
@@ -172,7 +184,6 @@ export interface SessionContext {
 
 // ─── Dashboard stats ─────────────────────────────────────────────────────
 export interface DashboardStats {
-  draftJobs: number;
   jobsThisMonth: number;
   recentJobs: Job[];
 }

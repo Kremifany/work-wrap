@@ -42,6 +42,11 @@ async function getOwnedCustomer(
   return customer;
 }
 
+function denyUnlessOwner(role: string): { success: false; error: string } | null {
+  if (role === "owner") return null;
+  return { success: false, error: "Only the business owner can change customers." };
+}
+
 function revalidateCustomer(customerId: string) {
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
@@ -97,6 +102,8 @@ export async function updateCustomerAction(
 
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -162,6 +169,8 @@ export async function addCustomerAddressAction(
 
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -205,6 +214,8 @@ export async function updateCustomerAddressAction(
 
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -249,6 +260,8 @@ export async function setPrimaryCustomerAddressAction(
   try {
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -282,6 +295,8 @@ export async function removeCustomerAddressAction(
   try {
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -312,6 +327,8 @@ export async function deleteCustomerAction(customerId: string): Promise<ActionRe
   try {
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };
@@ -337,6 +354,8 @@ export async function addCustomerInteractionAction(
 
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const existing = await getOwnedCustomer(customerId, session.business.id);
     if (!existing) return { success: false, error: "Customer not found." };

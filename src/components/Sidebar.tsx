@@ -46,10 +46,10 @@ function BrandMark({ size }: { size: "sm" | "md" }) {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Jobs",      href: "/jobs",      icon: ClipboardList },
-  { label: "Customers", href: "/customers", icon: Users },
+  { label: "Jobs",      href: "/jobs",      icon: ClipboardList, ownerOnly: true },
+  { label: "Customers", href: "/customers", icon: Users, ownerOnly: true },
   { label: "My Team",   href: "/team",      icon: UserCheck, ownerOnly: true },
-  { label: "Profile",   href: "/profile",   icon: Settings },
+  { label: "Profile",   href: "/profile",   icon: Settings, ownerOnly: true },
   { label: "Billing",   href: "/billing",   icon: CreditCard, ownerOnly: true },
 ];
 

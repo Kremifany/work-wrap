@@ -13,7 +13,7 @@ import PhotoUpload from "@/components/job/PhotoUpload";
 import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
-import { normalizeJobPhotos, getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
+import { normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, resolveJobTechSelectionIds } from "@/lib/job-utils";
 import {
   CheckCircle2,
   RefreshCw,
@@ -91,6 +91,7 @@ export default function JobDetailActions({
   const [saving, startSave] = useTransition();
 
   const isDraft = initialJob.status === "draft";
+  const canAssignTechs = session.role === "owner";
   const businessId = session.business?.id ?? "";
   const editable = canEdit && isDraft;
 
@@ -113,6 +114,7 @@ export default function JobDetailActions({
   });
 
   const persistTechsIfNeeded = async () => {
+    if (!canAssignTechs) return;
     const assigned = resolveSelectedTechs(selectedTechIds);
     if (assigned.length === 0) {
       throw new Error("Select at least one technician who worked this job.");
@@ -163,7 +165,7 @@ export default function JobDetailActions({
             notes: n.trim(),
             beforePhotos: before,
             afterPhotos: after,
-            ...(assigned.length > 0 ? { techs: assigned } : {}),
+            ...(canAssignTechs && assigned.length > 0 ? { techs: assigned } : {}),
           },
           { revalidate: opts?.revalidate ?? false }
         );
@@ -177,7 +179,7 @@ export default function JobDetailActions({
         savingRef.current = false;
       }
     },
-    [initialJob.id, snapshotUpdates]
+    [canAssignTechs, initialJob.id, snapshotUpdates]
   );
 
   // Debounced autosave — only when the serialized draft actually changes.
@@ -349,12 +351,16 @@ export default function JobDetailActions({
                 Who worked this job — shown on the completion report.
               </p>
             </div>
-            <JobTechMultiSelect
-              techs={techs}
-              selectedIds={selectedTechIds}
-              onChange={setSelectedTechIds}
-              disabled={!editable}
-            />
+            {canAssignTechs ? (
+              <JobTechMultiSelect
+                techs={techs}
+                selectedIds={selectedTechIds}
+                onChange={setSelectedTechIds}
+                disabled={!editable}
+              />
+            ) : (
+              <p className="text-sm text-neutral-800">{getJobTechniciansLabel(initialJob)}</p>
+            )}
           </div>
 
           <div className="card card-padded space-y-4">

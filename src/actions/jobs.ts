@@ -12,6 +12,7 @@ import {
   logJobCreatedInteraction,
   logReportEmailedInteraction,
 } from "@/lib/interactions";
+import { describeJobUpdates, recordJobChanges } from "@/lib/job-changes"; 
 import {
   createJobSchema,
   completeJobUpdatesSchema,
@@ -181,7 +182,10 @@ export async function createJobAction(
     if (!session) return { success: false, error: "Not authenticated." };
     if (!session.business) return { success: false, error: "Business profile not found." };
 
-    const techs = parsed.data.techs;
+    const techs =
+      session.role === "tech" && session.tech
+        ? [{ id: session.tech.id, name: session.tech.name }]
+        : parsed.data.techs;
     const primary = techs[0];
     const draftKey = parsed.data.draftKey;
     const ref = adminDb.collection("jobs").doc(draftKey);
@@ -240,6 +244,7 @@ export async function createJobAction(
         session.business.id
       );
     }
+    await recordJobChanges(session, { id: ref.id, ...jobData }, ["Created this job"]);
 
     revalidatePath("/jobs");
     if (input.customerId) revalidatePath(`/customers/${input.customerId}`);
@@ -298,7 +303,7 @@ export async function updateJobAction(
     if (updates.customerName !== undefined) patch.customerName = updates.customerName;
     if (updates.customerEmail !== undefined) patch.customerEmail = updates.customerEmail;
     if (updates.customerPhone !== undefined) patch.customerPhone = updates.customerPhone;
-    if (updates.techs !== undefined) {
+    if (session.role !== "tech" && updates.techs !== undefined) {
       const techs = updates.techs;
       patch.techs = techs;
       patch.techId = techs[0]?.id ?? "";
@@ -332,6 +337,7 @@ export async function updateJobAction(
     }
 
     await adminDb.collection("jobs").doc(jobId).update(patch);
+    await recordJobChanges(session, job, describeJobUpdates(job, updates));
 
     if (
       updates.customerId !== undefined &&
@@ -414,6 +420,10 @@ export async function generateReportAction(
     );
 
     await adminDb.collection("jobs").doc(jobId).update({ pdfUrl });
+    await recordJobChanges(session, job, [
+      ...describeJobUpdates(job, updates),
+      "Generated the job report",
+    ]);
 
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, data: { pdfUrl } };
@@ -465,6 +475,10 @@ export async function sendReportAction(
     if (!wasCompleted) {
       await logJobCompletedInteraction(session, job, business.id);
     }
+    await recordJobChanges(session, job, [
+      `Sent the report to ${job.customerEmail.trim()}`,
+      ...(!wasCompleted ? ["Marked the job complete"] : []),
+    ]);
 
     revalidatePath(`/jobs/${jobId}`);
     revalidatePath("/jobs");
@@ -515,6 +529,10 @@ export async function completeJobAction(
       if (!wasCompleted) {
         await logJobCompletedInteraction(session, job, session.business.id);
       }
+      await recordJobChanges(session, job, [
+        `Sent the report to ${job.customerEmail.trim()}`,
+        ...(!wasCompleted ? ["Marked the job complete"] : []),
+      ]);
     } else {
       await adminDb.collection("jobs").doc(jobId).update({
         status: "completed",
@@ -522,6 +540,7 @@ export async function completeJobAction(
       });
       if (!wasCompleted) {
         await logJobCompletedInteraction(session, job, session.business.id);
+        await recordJobChanges(session, job, ["Marked the job complete"]);
       }
     }
 
@@ -553,6 +572,7 @@ export async function deleteJobAction(jobId: string): Promise<ActionResult> {
     const denied = denyUnlessCanEdit(session, job);
     if (denied) return denied;
 
+    await recordJobChanges(session, job, ["Deleted this job"]);
     await adminDb.collection("jobs").doc(jobId).delete();
     if (job.customerId) {
       await adminDb

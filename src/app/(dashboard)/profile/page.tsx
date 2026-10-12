@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import ProfilePageClient from "./ProfilePageClient";
 
@@ -5,6 +6,7 @@ export const metadata = { title: "Business Profile" };
 
 export default async function ProfilePage() {
   const session = await requireSession();
+  if (session.role !== "owner") redirect("/dashboard");
   return (
     <div className="space-y-6 max-w-2xl">
       <div>

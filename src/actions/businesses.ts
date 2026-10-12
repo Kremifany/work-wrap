@@ -26,6 +26,9 @@ export async function upsertBusinessProfileAction(
 
     const session = await getSession();
     if (!session) return { success: false, error: "Not authenticated." };
+    if (session.role !== "owner") {
+      return { success: false, error: "Only the business owner can change the company profile." };
+    }
 
     const uid = session.user.uid;
 
