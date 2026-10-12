@@ -63,7 +63,18 @@ function encodePng(size, rgbaFn) {
   ]);
 }
 
-/** Rounded rect filled with brand blue + white "JT" mark. */
+function distToSeg(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len2 = dx * dx + dy * dy || 1;
+  let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const ex = px - (x1 + t * dx);
+  const ey = py - (y1 + t * dy);
+  return Math.hypot(ex, ey);
+}
+
+/** Rounded rect filled with brand blue + white "W²" mark. */
 function drawIcon(x, y, size, { maskable = false } = {}) {
   const pad = maskable ? size * 0.18 : size * 0.08;
   const r = size * 0.18;
@@ -82,34 +93,34 @@ function drawIcon(x, y, size, { maskable = false } = {}) {
     return dx * dx + dy * dy <= r * r;
   };
 
-  // Simple block letterforms for J and T inside the badge
   const inGlyph = (px, py) => {
-    const gx0 = size * 0.28;
-    const gx1 = size * 0.72;
-    const gy0 = size * 0.28;
-    const gy1 = size * 0.72;
-    const stroke = size * 0.1;
-    const mid = size * 0.5;
+    const s = size;
+    const stroke = s * 0.055;
+    const w = [
+      [0.16, 0.48],
+      [0.28, 0.78],
+      [0.39, 0.58],
+      [0.48, 0.78],
+      [0.58, 0.48],
+    ].map(([nx, ny]) => [nx * s, ny * s]);
+    for (let i = 0; i < w.length - 1; i++) {
+      if (distToSeg(px, py, w[i][0], w[i][1], w[i + 1][0], w[i + 1][1]) <= stroke) {
+        return true;
+      }
+    }
 
-    // T top bar
-    if (py >= gy0 && py <= gy0 + stroke && px >= gx0 && px <= gx1) return true;
-    // T stem
-    if (px >= mid - stroke / 2 && px <= mid + stroke / 2 && py >= gy0 && py <= gy1 * 0.55)
-      return true;
-
-    // J stem (right half)
-    const jx = size * 0.62;
-    if (px >= jx - stroke / 2 && px <= jx + stroke / 2 && py >= gy0 + stroke && py <= gy1 - stroke)
-      return true;
-    // J hook
-    if (
-      py >= gy1 - stroke * 1.4 &&
-      py <= gy1 &&
-      px >= mid - stroke * 0.2 &&
-      px <= jx + stroke / 2
-    )
-      return true;
-
+    // Superscript 2, clear of the W's right arm
+    const x0 = s * 0.64;
+    const y0 = s * 0.24;
+    const bw = s * 0.14;
+    const bh = s * 0.18;
+    const th = Math.max(2, bh * 0.22);
+    const inBox = (x, y, wdt, hgt) => px >= x && px < x + wdt && py >= y && py < y + hgt;
+    if (inBox(x0, y0, bw, th)) return true;
+    if (inBox(x0 + bw - th, y0, th, bh * 0.5)) return true;
+    if (inBox(x0, y0 + bh * 0.39, bw, th)) return true;
+    if (inBox(x0, y0 + bh * 0.39, th, bh * 0.61)) return true;
+    if (inBox(x0, y0 + bh - th, bw, th)) return true;
     return false;
   };
 

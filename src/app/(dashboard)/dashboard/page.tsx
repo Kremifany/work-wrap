@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { Job, DashboardStats } from "@/types";
 
-export const metadata = { title: "Dashboard | Job Tracker Pro" };
+export const metadata = { title: "Dashboard" };
 
 async function getStats(businessId: string): Promise<DashboardStats> {
   const [jobsSnap, customersSnap] = await Promise.all([

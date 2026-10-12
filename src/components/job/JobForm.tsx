@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJobAction } from "@/actions/jobs";
 import { createCustomerAction } from "@/actions/customers";
@@ -38,6 +38,12 @@ export default function JobForm({
   initialJobAddress,
 }: JobFormProps) {
   const router = useRouter();
+  const draftKeyRef = useRef(
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `job${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+  );
+  const submitLock = useRef(false);
   const normalizedCustomers = customers.map((c) => normalizeCustomer(c));
 
   const defaultTechIds = (() => {
@@ -128,16 +134,20 @@ export default function JobForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current) return;
+    submitLock.current = true;
     setError(null);
 
     const { customerId, customerName, customerEmail, customerPhone } =
       getCustomerDetails();
 
     if (!customerName.trim()) {
+      submitLock.current = false;
       setError("Customer name is required.");
       return;
     }
     if (!title.trim()) {
+      submitLock.current = false;
       setError("Job title is required.");
       return;
     }
@@ -158,6 +168,7 @@ export default function JobForm({
           ];
 
     if (assignedTechs.length === 0) {
+      submitLock.current = false;
       setError("Select at least one technician who worked this job.");
       return;
     }
@@ -175,6 +186,7 @@ export default function JobForm({
           notes: "",
         });
         if (!newCustResult.success || !newCustResult.data) {
+          submitLock.current = false;
           setError(newCustResult.error ?? "Failed to save customer to CRM.");
           return;
         }
@@ -183,6 +195,7 @@ export default function JobForm({
 
       const primary = assignedTechs[0];
       const result = await createJobAction({
+        draftKey: draftKeyRef.current,
         techId: primary.id,
         techName: primary.name,
         techs: assignedTechs,
@@ -198,6 +211,7 @@ export default function JobForm({
       });
 
       if (!result.success) {
+        submitLock.current = false;
         setError(result.error ?? "Failed to create job.");
         return;
       }
@@ -205,6 +219,7 @@ export default function JobForm({
       const { jobId } = result.data as { jobId: string };
       router.push(`/jobs/${jobId}`);
     } catch {
+      submitLock.current = false;
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setSubmitting(false);

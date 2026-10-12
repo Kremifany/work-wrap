@@ -10,7 +10,8 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase-client";
-import { createSessionAction, registerBusinessAction } from "@/actions/auth";
+import { registerBusinessAction } from "@/actions/auth";
+import { establishSession } from "@/lib/establish-session";
 import { clientEnv } from "@/lib/env.client";
 import {
   completeGoogleRedirectIfPresent,
@@ -59,7 +60,7 @@ function RegisterFormInner() {
         setLoading(true);
         const extraInfo = getAdditionalUserInfo(result);
         const token = await result.user.getIdToken();
-        const sessionRes = await createSessionAction(token);
+        const sessionRes = await establishSession(token);
         if (!sessionRes.success) throw new Error(sessionRes.error);
 
         if (extraInfo?.isNewUser) {
@@ -106,7 +107,7 @@ function RegisterFormInner() {
       const extraInfo = getAdditionalUserInfo(result);
       const token = await result.user.getIdToken();
 
-      const sessionRes = await createSessionAction(token);
+      const sessionRes = await establishSession(token);
       if (!sessionRes.success) throw new Error(sessionRes.error);
 
       if (extraInfo?.isNewUser) {
@@ -169,7 +170,7 @@ function RegisterFormInner() {
         token = await cred.user.getIdToken();
       }
 
-      const sessionRes = await createSessionAction(token);
+      const sessionRes = await establishSession(token);
       if (!sessionRes.success) throw new Error(sessionRes.error);
 
       const profileRes = await registerBusinessAction(uid, ownerName, businessName, email, accessCode || undefined);
@@ -215,8 +216,8 @@ function RegisterFormInner() {
       <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
       <p className="mt-1 text-sm text-slate-500">
         {clientEnv.NEXT_PUBLIC_BETA_ACCESS_REQUIRED
-          ? "Enter your beta access code to join Job Tracker Pro."
-          : "Get started with Job Tracker Pro — free during beta, no credit card needed."}
+          ? "Enter your beta access code to join Work Wrap."
+          : "Get started with Work Wrap — free during beta, no credit card needed."}
       </p>
 
       {planParam !== "free" && (

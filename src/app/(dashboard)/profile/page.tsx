@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/auth-session";
 import ProfilePageClient from "./ProfilePageClient";
 
-export const metadata = { title: "Business Profile | Job Tracker Pro" };
+export const metadata = { title: "Business Profile" };
 
 export default async function ProfilePage() {
   const session = await requireSession();

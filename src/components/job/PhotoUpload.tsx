@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, ImagePlus, X } from "lucide-react";
 import type { JobPhoto } from "@/types";
 
 interface PhotoUploadProps {
@@ -75,7 +75,8 @@ export default function PhotoUpload({
 }: PhotoUploadProps) {
   const [uploading, setUploading] = useState<UploadProgress[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -125,6 +126,11 @@ export default function PhotoUpload({
     setUploading((prev) =>
       prev.filter((u) => selected.every((f) => f !== u.file || u.error))
     );
+  };
+
+  const onPicked = (files: FileList | null, input: HTMLInputElement) => {
+    void handleFiles(files);
+    input.value = "";
   };
 
   const removePhoto = (index: number) => {
@@ -212,23 +218,50 @@ export default function PhotoUpload({
       {photos.length < max && (
         <>
           <input
-            ref={inputRef}
+            ref={libraryInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             multiple
             className="sr-only"
             onChange={(e) => {
-              void handleFiles(e.target.files);
-              e.target.value = "";
+              if (e.target) onPicked(e.target.files, e.target);
             }}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => {
+              if (e.target) onPicked(e.target.files, e.target);
+            }}
+          />
+          <div className="grid grid-cols-2 gap-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="border-2 border-dashed border-neutral-300 hover:border-brand-400 rounded-xl py-5 flex flex-col items-center gap-2 text-neutral-500 hover:text-brand-600 transition-colors"
+            >
+              <Camera className="w-5 h-5" />
+              <span className="text-sm font-medium">Take photo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => libraryInputRef.current?.click()}
+              className="border-2 border-dashed border-neutral-300 hover:border-brand-400 rounded-xl py-5 flex flex-col items-center gap-2 text-neutral-500 hover:text-brand-600 transition-colors"
+            >
+              <ImagePlus className="w-5 h-5" />
+              <span className="text-sm font-medium">Choose photos</span>
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
-            className="w-full border-2 border-dashed border-neutral-300 hover:border-brand-400 rounded-xl py-6 flex flex-col items-center gap-2 text-neutral-500 hover:text-brand-600 transition-colors group"
+            onClick={() => libraryInputRef.current?.click()}
+            className="hidden md:flex w-full border-2 border-dashed border-neutral-300 hover:border-brand-400 rounded-xl py-6 flex-col items-center gap-2 text-neutral-500 hover:text-brand-600 transition-colors group"
           >
             <div className="w-10 h-10 rounded-full bg-neutral-100 group-hover:bg-brand-50 flex items-center justify-center transition-colors">
-              <Camera className="w-5 h-5" />
+              <ImagePlus className="w-5 h-5" />
             </div>
             <span className="text-sm font-medium">
               {photos.length === 0 ? "Add photos" : "Add more photos"}
@@ -237,6 +270,9 @@ export default function PhotoUpload({
               JPEG, PNG, WebP or HEIC — max 15 MB each
             </span>
           </button>
+          <p className="md:hidden text-center text-xs text-neutral-400">
+            JPEG, PNG, WebP or HEIC — max 15 MB each
+          </p>
         </>
       )}
     </div>

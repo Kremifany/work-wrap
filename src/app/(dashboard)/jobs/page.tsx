@@ -13,7 +13,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
 import type { Job, Tech } from "@/types";
 
-export const metadata = { title: "Jobs | Job Tracker Pro" };
+export const metadata = { title: "Jobs" };
 
 type SortKey =
   | "customer"
@@ -250,7 +250,7 @@ export default async function JobsPage({
 
             {/* Desktop: full table */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="fp-table">
+              <table className="fp-table min-w-[960px]">
                 <thead>
                   <tr>
                     <SortHeaderCell
@@ -322,8 +322,8 @@ export default async function JobsPage({
                       <td className="text-neutral-500 max-w-xs truncate">
                         {job.jobAddress || "—"}
                       </td>
-                      <td className="text-neutral-500">{getJobTechniciansLabel(job)}</td>
-                      <td className="text-neutral-500">{formatDate(job.createdAt)}</td>
+                      <td className="text-neutral-500 whitespace-nowrap">{getJobTechniciansLabel(job)}</td>
+                      <td className="text-neutral-500 whitespace-nowrap">{formatDate(job.createdAt)}</td>
                       <td>
                         <Badge
                           variant={job.status === "completed" ? "success" : "warning"}

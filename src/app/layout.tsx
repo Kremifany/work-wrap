@@ -5,8 +5,8 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://jobtrackerproapp.com";
-const APP_NAME = "Job Tracker Pro";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://workwrapapp.com";
+const APP_NAME = "Work Wrap";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   applicationName: APP_NAME,
   title: {
-    default: "Job Tracker Pro – Job Completion Reports for Service Businesses",
-    template: "%s | Job Tracker Pro",
+    default: "Work Wrap – Job Completion Reports for Service Businesses",
+    template: "%s | Work Wrap",
   },
   description:
     "Auto-generate branded PDF job completion reports and email them to customers instantly. Built for HVAC, garage door, plumbing, electrical, and general service teams everywhere.",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     "garage door technician report app",
     "plumber job report software",
     "electrical contractor report app",
-    "job tracker app for service businesses",
+    "work wrap app for service businesses",
     "free field service app",
   ],
   appleWebApp: {
@@ -56,22 +56,22 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-192.png?v=w2", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png?v=w2", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png?v=w2", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type:        "website",
-    siteName:    "Job Tracker Pro",
-    title:       "Job Tracker Pro – Job Completion Reports for Service Businesses",
+    siteName:    "Work Wrap",
+    title:       "Work Wrap – Job Completion Reports for Service Businesses",
     description: "Auto-generate branded PDF reports and email them to customers the moment the job is done. Free for small teams.",
     url:         APP_URL,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Job Tracker Pro by ClipLogic" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Work Wrap by ClipLogic" }],
   },
   twitter: {
     card:        "summary_large_image",
-    title:       "Job Tracker Pro – Instant Job Reports for Service Businesses",
+    title:       "Work Wrap – Instant Job Reports for Service Businesses",
     description: "Replace paper forms. Email branded PDF reports to customers right after every job.",
     images:      ["/og-image.png"],
   },
@@ -84,7 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type":    "SoftwareApplication",
-    name:       "Job Tracker Pro",
+    name:       "Work Wrap",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     offers: {
@@ -119,7 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     url:        "https://cliplogicpro.com",
     brand: {
       "@type": "Brand",
-      name:    "Job Tracker Pro",
+      name:    "Work Wrap",
       url:     APP_URL,
     },
     address: {
@@ -139,7 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type":    "WebSite",
-    name:       "Job Tracker Pro",
+    name:       "Work Wrap",
     url:        APP_URL,
   };
 
@@ -150,6 +150,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify([softwareSchema, orgSchema, websiteSchema]) }}
         />
+        {process.env.NODE_ENV === "development" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}" +
+                "if(window.caches&&caches.keys){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}",
+            }}
+          />
+        )}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}

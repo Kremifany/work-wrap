@@ -134,6 +134,8 @@ export interface Job {
   completedAt: string | null;
   reportSentAt: string | null;
   createdAt: string;
+  /** Client id used as the Firestore document id so a repeated save cannot insert a second job. */
+  draftKey?: string;
 }
 
 // ─── Beta access ─────────────────────────────────────────────────────────────

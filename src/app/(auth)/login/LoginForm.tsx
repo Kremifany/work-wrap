@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase-client";
-import { createSessionAction } from "@/actions/auth";
+import { establishSession } from "@/lib/establish-session";
 import {
   completeGoogleRedirectIfPresent,
   googleSignInErrorMessage,
@@ -46,7 +46,7 @@ export default function LoginForm() {
         if (cancelled || !cred) return;
         setLoading(true);
         const token = await cred.user.getIdToken();
-        const res = await createSessionAction(token);
+        const res = await establishSession(token);
         if (!res.success) {
           setError(res.error ?? "Sign-in failed. Please try again.");
           return;
@@ -74,7 +74,7 @@ export default function LoginForm() {
       if (result === "redirecting") return; // page will navigate away
 
       const token = await result.user.getIdToken();
-      const res = await createSessionAction(token);
+      const res = await establishSession(token);
       if (!res.success) {
         setError(res.error ?? "Sign-in failed. Please try again.");
         return;
@@ -95,7 +95,7 @@ export default function LoginForm() {
     try {
       const cred  = await signInWithEmailAndPassword(auth, email, password);
       const token = await cred.user.getIdToken();
-      const res   = await createSessionAction(token);
+      const res   = await establishSession(token);
       if (!res.success) {
         setError(res.error ?? "Sign-in failed. Please try again.");
         return;
@@ -134,7 +134,7 @@ export default function LoginForm() {
     <div className="card-padded">
       <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Sign in to your Job Tracker Pro account
+        Sign in to your Work Wrap account
       </p>
 
       {error && (

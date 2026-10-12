@@ -15,7 +15,7 @@ export default function OfflinePage() {
         </div>
         <h1 className="text-xl font-bold text-brand-900">You’re offline</h1>
         <p className="mt-2 text-sm text-neutral-600">
-          Job Tracker Pro needs a connection for live jobs and reports. Reconnect
+          Work Wrap needs a connection for live jobs and reports. Reconnect
           and try again.
         </p>
         <Link href="/dashboard" className="btn btn-primary mt-6 inline-flex">

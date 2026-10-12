@@ -29,6 +29,21 @@ interface NavItem {
   ownerOnly?: boolean;
 }
 
+function BrandMark({ size }: { size: "sm" | "md" }) {
+  const box =
+    size === "sm"
+      ? "w-6 h-6 rounded text-[11px]"
+      : "w-8 h-8 rounded-lg text-sm shadow";
+  return (
+    <div
+      className={`${box} bg-accent-500 flex items-center justify-center text-white font-bold shrink-0 leading-none`}
+      aria-hidden="true"
+    >
+      W<sup className="text-[0.62em] ml-px">2</sup>
+    </div>
+  );
+}
+
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Jobs",      href: "/jobs",      icon: ClipboardList },
@@ -100,11 +115,9 @@ export default function Sidebar({
       {/* Logo / Brand */}
       <div className="px-6 py-5 border-b border-brand-700/50">
         <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow">
-            JT
-          </div>
+          <BrandMark size="md" />
           <span className="font-semibold text-lg tracking-tight text-white group-hover:text-accent-200 transition-colors">
-            Job Tracker Pro
+            Work Wrap
           </span>
         </Link>
       </div>
@@ -183,10 +196,8 @@ export default function Sidebar({
           <Menu className="w-5 h-5" />
         </button>
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-accent-500 flex items-center justify-center text-white font-bold text-xs">
-            JT
-          </div>
-          <span className="font-semibold text-base text-white">Job Tracker Pro</span>
+          <BrandMark size="sm" />
+          <span className="font-semibold text-base text-white">Work Wrap</span>
         </Link>
       </div>
 
