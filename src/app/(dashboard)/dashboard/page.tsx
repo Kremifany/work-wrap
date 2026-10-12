@@ -6,15 +6,64 @@ import { formatDate } from "@/lib/utils";
 import { getJobTitle, normalizeJob } from "@/lib/job-utils";
 import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronRight,
   ClipboardList,
   Clock,
   Plus,
-  ArrowRight,
-  ChevronRight,
 } from "lucide-react";
 import type { Job, DashboardStats } from "@/types";
 
 export const metadata = { title: "Dashboard" };
+
+type SortKey = "customer" | "job" | "address" | "date" | "status";
+type SortDir = "asc" | "desc";
+
+const SORT_KEYS = new Set<SortKey>(["customer", "job", "address", "date", "status"]);
+
+function parseSort(raw: string | undefined): SortKey {
+  if (raw && SORT_KEYS.has(raw as SortKey)) return raw as SortKey;
+  return "date";
+}
+
+function parseDir(raw: string | undefined, sort: SortKey): SortDir {
+  if (raw === "asc" || raw === "desc") return raw;
+  return sort === "date" ? "desc" : "asc";
+}
+
+function sortValue(job: Job, key: SortKey): string {
+  switch (key) {
+    case "customer":
+      return (job.customerName || "").toLowerCase();
+    case "job":
+      return getJobTitle(job).toLowerCase();
+    case "address":
+      return (job.jobAddress || "").toLowerCase();
+    case "date":
+      return job.createdAt || "";
+    case "status":
+      return job.status || "";
+    default:
+      return "";
+  }
+}
+
+function dashboardHref(opts: {
+  sort: SortKey;
+  dir: SortDir;
+  onboarding?: string;
+}): string {
+  const p = new URLSearchParams();
+  if (opts.onboarding) p.set("onboarding", opts.onboarding);
+  if (opts.sort !== "date") p.set("sort", opts.sort);
+  if (opts.sort === "date" && opts.dir === "asc") p.set("dir", "asc");
+  if (opts.sort !== "date" && opts.dir === "desc") p.set("dir", "desc");
+  const q = p.toString();
+  return q ? `/dashboard?${q}` : "/dashboard";
+}
 
 async function getStats(businessId: string): Promise<DashboardStats> {
   const jobsSnap = await adminDb
@@ -39,7 +88,7 @@ async function getStats(businessId: string): Promise<DashboardStats> {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ onboarding?: string }>;
+  searchParams: Promise<{ onboarding?: string; sort?: string; dir?: string }>;
 }) {
   const [session, params] = await Promise.all([requireSession(), searchParams]);
 
@@ -60,6 +109,15 @@ export default async function DashboardPage({
   }
 
   const stats = await getStats(session.business.id);
+  const sort = parseSort(params.sort);
+  const dir = parseDir(params.dir, sort);
+  const recentJobs = [...stats.recentJobs].sort((a, b) => {
+    const cmp = sortValue(a, sort).localeCompare(sortValue(b, sort), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return dir === "asc" ? cmp : -cmp;
+  });
   const displayName =
     session.role === "tech"
       ? (session.tech?.name ?? session.business.ownerName)
@@ -163,7 +221,7 @@ export default async function DashboardPage({
         ) : (
           <>
             <ul className="md:hidden divide-y divide-neutral-100">
-              {stats.recentJobs.map((job) => (
+              {recentJobs.map((job) => (
                 <li key={job.id}>
                   <Link
                     href={`/jobs/${job.id}`}
@@ -193,16 +251,46 @@ export default async function DashboardPage({
               <table className="fp-table">
                 <thead>
                   <tr>
-                    <th>Customer</th>
-                    <th>Job Type</th>
-                    <th>Address</th>
-                    <th>Date</th>
-                    <th>Status</th>
+                    <SortHeader
+                      label="Customer"
+                      column="customer"
+                      sort={sort}
+                      dir={dir}
+                      onboarding={params.onboarding}
+                    />
+                    <SortHeader
+                      label="Job Type"
+                      column="job"
+                      sort={sort}
+                      dir={dir}
+                      onboarding={params.onboarding}
+                    />
+                    <SortHeader
+                      label="Address"
+                      column="address"
+                      sort={sort}
+                      dir={dir}
+                      onboarding={params.onboarding}
+                    />
+                    <SortHeader
+                      label="Date"
+                      column="date"
+                      sort={sort}
+                      dir={dir}
+                      onboarding={params.onboarding}
+                    />
+                    <SortHeader
+                      label="Status"
+                      column="status"
+                      sort={sort}
+                      dir={dir}
+                      onboarding={params.onboarding}
+                    />
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentJobs.map((job) => (
+                  {recentJobs.map((job) => (
                     <tr key={job.id}>
                       <td className="font-medium">{job.customerName || "—"}</td>
                       <td>{getJobTitle(job)}</td>
@@ -230,5 +318,42 @@ export default async function DashboardPage({
         )}
       </div>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  column,
+  sort,
+  dir,
+  onboarding,
+}: {
+  label: string;
+  column: SortKey;
+  sort: SortKey;
+  dir: SortDir;
+  onboarding?: string;
+}) {
+  const active = sort === column;
+  const nextDir: SortDir = active && dir === "asc" ? "desc" : "asc";
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+
+  return (
+    <th>
+      <Link
+        href={dashboardHref({
+          onboarding,
+          sort: column,
+          dir: active ? nextDir : column === "date" ? "desc" : "asc",
+        })}
+        className={`inline-flex items-center gap-1 hover:text-brand-700 transition-colors ${
+          active ? "text-brand-800" : "text-inherit"
+        }`}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <Icon className={`w-3.5 h-3.5 ${active ? "opacity-100" : "opacity-40"}`} />
+      </Link>
+    </th>
   );
 }
