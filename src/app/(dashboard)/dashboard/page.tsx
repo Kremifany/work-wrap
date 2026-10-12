@@ -7,7 +7,6 @@ import { getJobTitle, normalizeJob } from "@/lib/job-utils";
 import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
   ClipboardList,
-  Users,
   Clock,
   Plus,
   ArrowRight,
@@ -18,17 +17,11 @@ import type { Job, DashboardStats } from "@/types";
 export const metadata = { title: "Dashboard" };
 
 async function getStats(businessId: string): Promise<DashboardStats> {
-  const [jobsSnap, customersSnap] = await Promise.all([
-    adminDb
-      .collection("jobs")
-      .where("businessId", "==", businessId)
-      .limit(100)
-      .get(),
-    adminDb
-      .collection("customers")
-      .where("businessId", "==", businessId)
-      .get(),
-  ]);
+  const jobsSnap = await adminDb
+    .collection("jobs")
+    .where("businessId", "==", businessId)
+    .limit(100)
+    .get();
 
   const jobs = jobsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() } as Job))
@@ -38,7 +31,6 @@ async function getStats(businessId: string): Promise<DashboardStats> {
 
   return {
     draftJobs: jobs.filter((j) => j.status === "draft").length,
-    totalCustomers: customersSnap.size,
     jobsThisMonth: jobs.filter((j) => j.createdAt >= monthStart).length,
     recentJobs: jobs.slice(0, 8),
   };
@@ -114,15 +106,6 @@ export default async function DashboardPage({
               <p className="stat-value text-warning-700">{stats.draftJobs}</p>
             </div>
             <Clock className="w-6 h-6 text-warning-400 mt-1" />
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="stat-label">Customers</p>
-              <p className="stat-value">{stats.totalCustomers}</p>
-            </div>
-            <Users className="w-6 h-6 text-brand-400 mt-1" />
           </div>
         </div>
       </div>

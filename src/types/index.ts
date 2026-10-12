@@ -173,7 +173,6 @@ export interface SessionContext {
 // ─── Dashboard stats ─────────────────────────────────────────────────────
 export interface DashboardStats {
   draftJobs: number;
-  totalCustomers: number;
   jobsThisMonth: number;
   recentJobs: Job[];
 }
