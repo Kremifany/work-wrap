@@ -84,8 +84,34 @@ export async function updateTechAction(
     const data = snap.data() as Tech;
     if (data.businessId !== session.business.id) return { success: false, error: "Access denied." };
 
-    await adminDb.collection("techs").doc(techId).update(parsed.data);
+    const patch = parsed.data;
+    const updates: { name?: string; email?: string; phone?: string; uid?: string | null } = {
+      ...patch,
+    };
+    if (patch.email && patch.email.toLowerCase() !== (data.email ?? "").toLowerCase()) {
+      try {
+        const fbUser = await adminAuth.getUserByEmail(patch.email);
+        updates.uid = fbUser.uid;
+      } catch {
+        updates.uid = null;
+      }
+    }
+
+    await adminDb.collection("techs").doc(techId).update(updates);
+
+    if (data.role === "owner") {
+      const businessPatch: { ownerName?: string; email?: string; phone?: string } = {};
+      if (patch.name) businessPatch.ownerName = patch.name;
+      if (patch.email) businessPatch.email = patch.email;
+      if (patch.phone !== undefined) businessPatch.phone = patch.phone;
+      if (Object.keys(businessPatch).length > 0) {
+        await adminDb.collection("businesses").doc(session.business.id).update(businessPatch);
+      }
+    }
+
     revalidatePath("/team");
+    revalidatePath(`/team/${techId}`);
+    revalidatePath("/profile");
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update team member.";
