@@ -172,7 +172,6 @@ export interface SessionContext {
 
 // ─── Dashboard stats ─────────────────────────────────────────────────────
 export interface DashboardStats {
-  totalJobs: number;
   completedJobs: number;
   draftJobs: number;
   totalCustomers: number;

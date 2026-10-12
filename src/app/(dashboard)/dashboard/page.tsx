@@ -38,7 +38,6 @@ async function getStats(businessId: string): Promise<DashboardStats> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   return {
-    totalJobs: jobs.length,
     completedJobs: jobs.filter((j) => j.status === "completed").length,
     draftJobs: jobs.filter((j) => j.status === "draft").length,
     totalCustomers: customersSnap.size,
@@ -110,15 +109,6 @@ export default async function DashboardPage({
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="stat-label">Total Jobs</p>
-              <p className="stat-value">{stats.totalJobs}</p>
-            </div>
-            <ClipboardList className="w-6 h-6 text-brand-400 mt-1" />
-          </div>
-        </div>
         <div className="stat-card">
           <div className="flex items-start justify-between">
             <div>
