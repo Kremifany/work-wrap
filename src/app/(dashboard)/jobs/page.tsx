@@ -249,8 +249,19 @@ export default async function JobsPage({
             </ul>
 
             {/* Desktop: full table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="fp-table min-w-[960px]">
+            <div className="hidden md:block">
+              <table className="fp-table table-fixed">
+                <colgroup>
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col className="w-44" />
+                  <col className="w-28" />
+                  <col className="w-16" />
+                  <col className="w-16" />
+                </colgroup>
                 <thead>
                   <tr>
                     <SortHeaderCell
@@ -316,13 +327,21 @@ export default async function JobsPage({
                 <tbody>
                   {jobs.map((job) => (
                     <tr key={job.id}>
-                      <td className="font-medium">{job.customerName || "—"}</td>
-                      <td>{getJobTitle(job)}</td>
-                      <td className="text-neutral-500 text-sm">{job.jobType || "General"}</td>
-                      <td className="text-neutral-500 max-w-xs truncate">
+                      <td className="font-medium truncate" title={job.customerName || undefined}>
+                        {job.customerName || "—"}
+                      </td>
+                      <td className="truncate" title={getJobTitle(job)}>
+                        {getJobTitle(job)}
+                      </td>
+                      <td className="text-neutral-500 text-sm truncate" title={job.jobType || "General"}>
+                        {job.jobType || "General"}
+                      </td>
+                      <td className="text-neutral-500 truncate" title={job.jobAddress || undefined}>
                         {job.jobAddress || "—"}
                       </td>
-                      <td className="text-neutral-500 whitespace-nowrap">{getJobTechniciansLabel(job)}</td>
+                      <td className="text-neutral-500 truncate" title={getJobTechniciansLabel(job)}>
+                        {getJobTechniciansLabel(job)}
+                      </td>
                       <td className="text-neutral-500 whitespace-nowrap">{formatDate(job.createdAt)}</td>
                       <td>
                         <Badge
