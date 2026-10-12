@@ -7,7 +7,6 @@ import { getJobTitle, normalizeJob } from "@/lib/job-utils";
 import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
   ArrowDown,
-  ArrowRight,
   ArrowUp,
   ArrowUpDown,
   ChevronRight,
@@ -201,14 +200,8 @@ export default async function DashboardPage({
 
       {/* Recent jobs */}
       <div className="card">
-        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-neutral-200">
           <h2 className="font-semibold text-neutral-900">Recent Jobs</h2>
-          <Link
-            href="/jobs"
-            className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1 font-medium"
-          >
-            View all <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
         {stats.recentJobs.length === 0 ? (
           <div className="px-6 py-12 text-center">
