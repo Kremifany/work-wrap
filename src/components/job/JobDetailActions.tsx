@@ -14,6 +14,7 @@ import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
 import { normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, resolveJobTechSelectionIds } from "@/lib/job-utils";
+import { notifyJobSaved, registerJobSaveFlush, setLiveTechnicianLabel } from "@/lib/job-save-bus";
 import {
   CheckCircle2,
   RefreshCw,
@@ -95,6 +96,17 @@ export default function JobDetailActions({
   const businessId = session.business?.id ?? "";
   const editable = canEdit && isDraft;
 
+  useEffect(() => {
+    if (!canAssignTechs) return;
+    const names =
+      techs
+        .filter((tech) => selectedTechIds.includes(tech.id))
+        .map((tech) => tech.name.trim())
+        .filter(Boolean)
+        .join(", ") || "—";
+    setLiveTechnicianLabel(initialJob.id, names);
+  }, [canAssignTechs, initialJob.id, selectedTechIds, techs]);
+
   const resolveSelectedTechs = (ids: string[]) => {
     const fromTeam = techsRef.current
       .filter((t) => ids.includes(t.id))
@@ -175,12 +187,27 @@ export default function JobDetailActions({
         }
         lastSavedSnapshotRef.current = snap;
         setSaveStatus("saved");
+        notifyJobSaved();
       } finally {
         savingRef.current = false;
       }
     },
     [canAssignTechs, initialJob.id, snapshotUpdates]
   );
+
+  // History opens this so a checkbox change is saved before the dialog reads the log.
+  useEffect(() => {
+    return registerJobSaveFlush(async () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      for (let i = 0; i < 40 && savingRef.current; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await persistUpdates({ revalidate: false });
+    });
+  }, [persistUpdates]);
 
   // Debounced autosave — only when the serialized draft actually changes.
   useEffect(() => {

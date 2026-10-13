@@ -337,7 +337,9 @@ export async function updateJobAction(
     }
 
     await adminDb.collection("jobs").doc(jobId).update(patch);
-    await recordJobChanges(session, job, describeJobUpdates(job, updates));
+    const recordedUpdates =
+      session.role === "tech" ? { ...updates, techs: undefined } : updates;
+    await recordJobChanges(session, job, describeJobUpdates(job, recordedUpdates));
 
     if (
       updates.customerId !== undefined &&

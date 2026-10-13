@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, canEditJob, jobAssignedToTech } from "@/lib/job-utils";
 import { listJobChanges } from "@/lib/job-changes";
 import { JobChangeHistory } from "@/components/job/JobChangeHistory";
+import { LiveTechnicianLabel } from "@/components/job/LiveTechnicianLabel";
 import { Badge } from "@/components/ui";
 import { formatDate, formatDateTime, formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import JobDetailActions from "@/components/job/JobDetailActions";
@@ -118,7 +119,9 @@ export default async function JobDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {session.role === "owner" && <JobChangeHistory changes={changes} />}
+          {session.role === "owner" && (
+            <JobChangeHistory jobId={job.id} changes={changes} />
+          )}
           {canEditDetails && (
             <Link
               href={`/jobs/${job.id}/edit`}
@@ -167,10 +170,7 @@ export default async function JobDetailPage({
             <dd className="text-neutral-900">{job.jobAddress || "—"}</dd>
           </div>
           <div>
-            <dt className="text-neutral-500 font-medium">
-              {(job.techs?.length ?? 0) > 1 ? "Technicians" : "Technician"}
-            </dt>
-            <dd className="text-neutral-900">{getJobTechniciansLabel(job)}</dd>
+            <LiveTechnicianLabel jobId={job.id} initial={getJobTechniciansLabel(job)} />
           </div>
           {job.completedAt && (
             <div>

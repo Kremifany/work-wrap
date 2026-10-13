@@ -180,7 +180,7 @@ export default function JobForm({
 
     try {
       let resolvedCustomerId = customerId;
-      if (customerMode === "new" && customerName.trim()) {
+      if (session.role === "owner" && customerMode === "new" && customerName.trim()) {
         const newCustResult = await createCustomerAction({
           name: newCustomerName.trim(),
           email: newCustomerEmail.trim(),

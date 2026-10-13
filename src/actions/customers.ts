@@ -63,6 +63,8 @@ export async function createCustomerAction(
 
     const session = await getSession();
     if (!session?.business) return { success: false, error: "Not authenticated." };
+    const denied = denyUnlessOwner(session.role);
+    if (denied) return denied;
 
     const serviceAddresses = buildServiceAddressesFromInput(
       parsed.data.serviceAddresses ?? [],
