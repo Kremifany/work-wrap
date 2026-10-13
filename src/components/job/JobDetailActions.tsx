@@ -13,7 +13,8 @@ import PhotoUpload from "@/components/job/PhotoUpload";
 import { JobTechMultiSelect } from "@/components/job/JobTechMultiSelect";
 import { Alert, Spinner, Modal } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
-import { normalizeJobPhotos, getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
+import { normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, resolveJobTechSelectionIds } from "@/lib/job-utils";
+import { notifyJobSaved, registerJobSaveFlush, setLiveTechnicianLabel } from "@/lib/job-save-bus";
 import {
   CheckCircle2,
   RefreshCw,
@@ -91,8 +92,20 @@ export default function JobDetailActions({
   const [saving, startSave] = useTransition();
 
   const isDraft = initialJob.status === "draft";
+  const canAssignTechs = session.role === "owner";
   const businessId = session.business?.id ?? "";
   const editable = canEdit && isDraft;
+
+  useEffect(() => {
+    if (!canAssignTechs) return;
+    const names =
+      techs
+        .filter((tech) => selectedTechIds.includes(tech.id))
+        .map((tech) => tech.name.trim())
+        .filter(Boolean)
+        .join(", ") || "—";
+    setLiveTechnicianLabel(initialJob.id, names);
+  }, [canAssignTechs, initialJob.id, selectedTechIds, techs]);
 
   const resolveSelectedTechs = (ids: string[]) => {
     const fromTeam = techsRef.current
@@ -113,6 +126,7 @@ export default function JobDetailActions({
   });
 
   const persistTechsIfNeeded = async () => {
+    if (!canAssignTechs) return;
     const assigned = resolveSelectedTechs(selectedTechIds);
     if (assigned.length === 0) {
       throw new Error("Select at least one technician who worked this job.");
@@ -163,7 +177,7 @@ export default function JobDetailActions({
             notes: n.trim(),
             beforePhotos: before,
             afterPhotos: after,
-            ...(assigned.length > 0 ? { techs: assigned } : {}),
+            ...(canAssignTechs && assigned.length > 0 ? { techs: assigned } : {}),
           },
           { revalidate: opts?.revalidate ?? false }
         );
@@ -173,12 +187,27 @@ export default function JobDetailActions({
         }
         lastSavedSnapshotRef.current = snap;
         setSaveStatus("saved");
+        notifyJobSaved();
       } finally {
         savingRef.current = false;
       }
     },
-    [initialJob.id, snapshotUpdates]
+    [canAssignTechs, initialJob.id, snapshotUpdates]
   );
+
+  // History opens this so a checkbox change is saved before the dialog reads the log.
+  useEffect(() => {
+    return registerJobSaveFlush(async () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      for (let i = 0; i < 40 && savingRef.current; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await persistUpdates({ revalidate: false });
+    });
+  }, [persistUpdates]);
 
   // Debounced autosave — only when the serialized draft actually changes.
   useEffect(() => {
@@ -349,12 +378,16 @@ export default function JobDetailActions({
                 Who worked this job — shown on the completion report.
               </p>
             </div>
-            <JobTechMultiSelect
-              techs={techs}
-              selectedIds={selectedTechIds}
-              onChange={setSelectedTechIds}
-              disabled={!editable}
-            />
+            {canAssignTechs ? (
+              <JobTechMultiSelect
+                techs={techs}
+                selectedIds={selectedTechIds}
+                onChange={setSelectedTechIds}
+                disabled={!editable}
+              />
+            ) : (
+              <p className="text-sm text-neutral-800">{getJobTechniciansLabel(initialJob)}</p>
+            )}
           </div>
 
           <div className="card card-padded space-y-4">

@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
-import { formatDate, formatPhoneNumber, phoneTelHref } from "@/lib/utils";
+import { formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import {
   getPrimaryAddressLine,
   normalizeCustomer,
@@ -15,6 +16,7 @@ export const metadata = { title: "Customers" };
 
 export default async function CustomersPage() {
   const session = await requireSession();
+  if (session.role !== "owner") redirect("/dashboard");
   if (!session.business) {
     return (
       <div className="card card-padded">
@@ -41,53 +43,15 @@ export default async function CustomersPage() {
     .map((d) => normalizeCustomer({ id: d.id, ...d.data() } as Customer))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const withEmail = customers.filter((c) => c.email.trim()).length;
-  const withPhone = customers.filter((c) => c.phone.trim()).length;
-  const withAddress = customers.filter((c) => getPrimaryAddressLine(c)).length;
-
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-900">Customers</h1>
-          <p className="text-neutral-500 text-sm mt-0.5">
-            Contact details, phone numbers, emails, and primary service addresses.
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold text-brand-900">Customers</h1>
         <Link href="/customers/new" className="btn btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" />
           New Customer
         </Link>
       </div>
-
-      {customers.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="card card-padded">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Customers
-            </p>
-            <p className="mt-1 text-2xl font-bold text-brand-900">{customers.length}</p>
-          </div>
-          <div className="card card-padded">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              With email
-            </p>
-            <p className="mt-1 text-2xl font-bold text-brand-900">{withEmail}</p>
-          </div>
-          <div className="card card-padded">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              With phone
-            </p>
-            <p className="mt-1 text-2xl font-bold text-brand-900">{withPhone}</p>
-          </div>
-          <div className="card card-padded">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              With address
-            </p>
-            <p className="mt-1 text-2xl font-bold text-brand-900">{withAddress}</p>
-          </div>
-        </div>
-      )}
 
       <div className="card">
         {customers.length === 0 ? (
@@ -151,8 +115,6 @@ export default async function CustomersPage() {
                     <th>Phone</th>
                     <th>Primary address</th>
                     <th>Jobs</th>
-                    <th>Since</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -213,17 +175,6 @@ export default async function CustomersPage() {
                         </td>
                         <td>
                           <Badge variant="default">{c.jobCount}</Badge>
-                        </td>
-                        <td className="text-neutral-500 text-sm">
-                          {formatDate(c.createdAt)}
-                        </td>
-                        <td>
-                          <Link
-                            href={`/customers/${c.id}`}
-                            className="text-brand-600 hover:text-brand-700 text-sm font-medium"
-                          >
-                            View
-                          </Link>
                         </td>
                       </tr>
                     );

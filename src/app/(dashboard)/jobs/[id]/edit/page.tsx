@@ -84,7 +84,12 @@ export default async function EditJobPage({
         </p>
       </div>
 
-      <JobEditForm job={job} customers={customers} techs={techs} />
+      <JobEditForm
+        job={job}
+        customers={customers}
+        techs={techs}
+        canAssignTechs={session.role === "owner"}
+      />
     </div>
   );
 }

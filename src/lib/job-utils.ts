@@ -83,6 +83,24 @@ export function jobIncludesTech(
   return normalizeJobTechs(job).some((t) => t.id === id);
 }
 
+/** A technician may see a job only when they are assigned to it. */
+export function jobAssignedToTech(
+  job: Pick<Job, "techId" | "techName" | "techs">,
+  tech: { id: string; name?: string | null; uid?: string | null }
+): boolean {
+  const id = tech.id?.trim();
+  if (id && jobIncludesTech(job, id)) return true;
+  const uid = tech.uid?.trim();
+  if (uid && uid !== id && jobIncludesTech(job, uid)) return true;
+
+  const name = tech.name?.trim().toLowerCase();
+  if (!name) return false;
+  if ((job.techName || "").trim().toLowerCase() === name) return true;
+  return normalizeJobTechs(job).some(
+    (assigned) => assigned.name.trim().toLowerCase() === name
+  );
+}
+
 /**
  * Owner of the business, or a technician assigned to this job, may edit it.
  * Other techs on the same business may view but not edit.

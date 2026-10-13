@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { getJobTitle, normalizeJob } from "@/lib/job-utils";
+import { getJobTitle, jobAssignedToTech, normalizeJob } from "@/lib/job-utils";
 import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import {
   ArrowDown,
@@ -11,7 +11,6 @@ import {
   ArrowUpDown,
   ChevronRight,
   ClipboardList,
-  Clock,
   Plus,
 } from "lucide-react";
 import type { Job, DashboardStats } from "@/types";
@@ -64,21 +63,26 @@ function dashboardHref(opts: {
   return q ? `/dashboard?${q}` : "/dashboard";
 }
 
-async function getStats(businessId: string): Promise<DashboardStats> {
+async function getStats(
+  businessId: string,
+  onlyTech?: { id: string; name: string; uid: string | null } | null
+): Promise<DashboardStats> {
   const jobsSnap = await adminDb
     .collection("jobs")
     .where("businessId", "==", businessId)
     .limit(100)
     .get();
 
-  const jobs = jobsSnap.docs
+  let jobs = jobsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() } as Job))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (onlyTech) {
+    jobs = jobs.filter((job) => jobAssignedToTech(job, onlyTech));
+  }
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   return {
-    draftJobs: jobs.filter((j) => j.status === "draft").length,
     jobsThisMonth: jobs.filter((j) => j.createdAt >= monthStart).length,
     recentJobs: jobs.slice(0, 8),
   };
@@ -107,7 +111,10 @@ export default async function DashboardPage({
     );
   }
 
-  const stats = await getStats(session.business.id);
+  const stats = await getStats(
+    session.business.id,
+    session.role === "tech" ? session.tech : null
+  );
   const sort = parseSort(params.sort);
   const dir = parseDir(params.dir, sort);
   const recentJobs = [...stats.recentJobs].sort((a, b) => {
@@ -152,19 +159,6 @@ export default async function DashboardPage({
             businessName={session.business.name}
           />
         )}
-      </div>
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="stat-label">In Draft</p>
-              <p className="stat-value text-warning-700">{stats.draftJobs}</p>
-            </div>
-            <Clock className="w-6 h-6 text-warning-400 mt-1" />
-          </div>
-        </div>
       </div>
 
       {/* Monthly usage bar (free plan) */}

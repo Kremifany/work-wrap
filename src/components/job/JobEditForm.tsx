@@ -11,7 +11,7 @@ import {
   getPrimaryAddressLine,
   normalizeCustomer,
 } from "@/lib/customer-utils";
-import { getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
+import { getJobTechniciansLabel, getJobTitle, resolveJobTechSelectionIds } from "@/lib/job-utils";
 import type { Customer, Job, Tech } from "@/types";
 
 const CUSTOM_ADDRESS_VALUE = "__custom__";
@@ -20,9 +20,10 @@ interface JobEditFormProps {
   job: Job;
   customers: Customer[];
   techs: Tech[];
+  canAssignTechs?: boolean;
 }
 
-export default function JobEditForm({ job, customers, techs }: JobEditFormProps) {
+export default function JobEditForm({ job, customers, techs, canAssignTechs = true }: JobEditFormProps) {
   const router = useRouter();
   const normalizedCustomers = customers.map((c) => normalizeCustomer(c));
 
@@ -96,7 +97,7 @@ export default function JobEditForm({ job, customers, techs }: JobEditFormProps)
         customerName: cust?.name ?? job.customerName,
         customerEmail: cust?.email ?? job.customerEmail,
         customerPhone: cust?.phone ?? job.customerPhone,
-        ...(assigned.length > 0 ? { techs: assigned } : {}),
+        ...(canAssignTechs && assigned.length > 0 ? { techs: assigned } : {}),
       });
       if (!result.success) {
         setError(result.error ?? "Failed to update job.");
@@ -210,11 +211,15 @@ export default function JobEditForm({ job, customers, techs }: JobEditFormProps)
 
       <section className="job-form-section space-y-3">
         <h2 className="section-title">Technicians</h2>
-        <JobTechMultiSelect
-          techs={techs}
-          selectedIds={selectedTechIds}
-          onChange={setSelectedTechIds}
-        />
+        {canAssignTechs ? (
+          <JobTechMultiSelect
+            techs={techs}
+            selectedIds={selectedTechIds}
+            onChange={setSelectedTechIds}
+          />
+        ) : (
+          <p className="text-sm text-neutral-800">{getJobTechniciansLabel(job)}</p>
+        )}
       </section>
 
       <div className="flex gap-3 pt-2">

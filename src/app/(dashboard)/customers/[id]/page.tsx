@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
@@ -32,6 +32,7 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const [{ id }, session] = await Promise.all([params, requireSession()]);
+  if (session.role !== "owner") redirect("/dashboard");
   const business = session.business;
   if (!business) notFound();
 

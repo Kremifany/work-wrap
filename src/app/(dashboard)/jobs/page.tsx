@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
 import { Badge } from "@/components/ui";
@@ -7,6 +8,7 @@ import {
   getJobTitle,
   getJobTechniciansLabel,
   getReportFilename,
+  jobAssignedToTech,
   jobIncludesTech,
   normalizeJob,
 } from "@/lib/job-utils";
@@ -97,8 +99,10 @@ export default async function JobsPage({
   }>;
 }) {
   const [session, params] = await Promise.all([requireSession(), searchParams]);
+  if (session.role === "tech") redirect("/dashboard");
   const { status } = params;
-  const techId = params.techId?.trim() || undefined;
+  const isTech = session.role === "tech";
+  const techId = isTech ? undefined : params.techId?.trim() || undefined;
   const sort = parseSort(params.sort);
   const dir = parseDir(params.dir, sort);
 
@@ -123,7 +127,10 @@ export default async function JobsPage({
     jobs = jobs.filter((j) => j.status === status);
   }
 
-  if (techId) {
+  if (isTech) {
+    const tech = session.tech;
+    jobs = tech ? jobs.filter((job) => jobAssignedToTech(job, tech)) : [];
+  } else if (techId) {
     jobs = jobs.filter((j) => jobIncludesTech(j, techId));
   }
 

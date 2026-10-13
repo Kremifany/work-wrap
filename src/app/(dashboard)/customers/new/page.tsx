@@ -1,10 +1,12 @@
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import { NewCustomerForm } from "@/components/CustomerForms";
 
 export const metadata = { title: "New Customer" };
 
 export default async function NewCustomerPage() {
-  await requireSession();
+  const session = await requireSession();
+  if (session.role !== "owner") redirect("/dashboard");
   return (
     <div className="space-y-6">
       <div>

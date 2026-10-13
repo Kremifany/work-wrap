@@ -2,7 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
 import { adminDb } from "@/lib/firebase-admin";
-import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, canEditJob } from "@/lib/job-utils";
+import { normalizeJob, normalizeJobPhotos, getJobTitle, getJobTechniciansLabel, canEditJob, jobAssignedToTech } from "@/lib/job-utils";
+import { listJobChanges } from "@/lib/job-changes";
+import { JobChangeHistory } from "@/components/job/JobChangeHistory";
+import { LiveTechnicianLabel } from "@/components/job/LiveTechnicianLabel";
 import { Badge } from "@/components/ui";
 import { formatDate, formatDateTime, formatPhoneNumber, phoneTelHref } from "@/lib/utils";
 import JobDetailActions from "@/components/job/JobDetailActions";
@@ -51,6 +54,9 @@ export default async function JobDetailPage({
 
   const job = normalizeJob({ id: snap.id, ...snap.data() } as Job);
   if (job.businessId !== session.business.id) notFound();
+  if (session.role === "tech" && !jobAssignedToTech(job, session.tech ?? { id: "", name: "" })) {
+    notFound();
+  }
 
   const teamTechs = techsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() } as Tech))
@@ -78,6 +84,11 @@ export default async function JobDetailPage({
     }
   }
 
+  const changes =
+    session.role === "owner"
+      ? await listJobChanges(session.business.id, job.id)
+      : [];
+
   const { beforePhotos, afterPhotos } = normalizeJobPhotos(job);
   const jobTitle = getJobTitle(job);
   const canEdit = canEditJob(session, job);
@@ -86,10 +97,10 @@ export default async function JobDetailPage({
   return (
     <div className="space-y-6 max-w-3xl">
       <Link
-        href="/jobs"
+        href={session.role === "tech" ? "/dashboard" : "/jobs"}
         className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-brand-600 transition-colors"
       >
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Jobs
+        <ArrowLeft className="w-3.5 h-3.5" /> {session.role === "tech" ? "Back to Dashboard" : "Back to Jobs"}
       </Link>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -107,15 +118,20 @@ export default async function JobDetailPage({
             </span>
           </div>
         </div>
-        {canEditDetails && (
-          <Link
-            href={`/jobs/${job.id}/edit`}
-            className="btn btn-outline flex items-center gap-2"
-          >
-            <Pencil className="w-4 h-4" />
-            Edit Job
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {session.role === "owner" && (
+            <JobChangeHistory jobId={job.id} changes={changes} />
+          )}
+          {canEditDetails && (
+            <Link
+              href={`/jobs/${job.id}/edit`}
+              className="btn btn-outline flex items-center gap-2"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit Job
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="card card-padded">
@@ -154,10 +170,7 @@ export default async function JobDetailPage({
             <dd className="text-neutral-900">{job.jobAddress || "—"}</dd>
           </div>
           <div>
-            <dt className="text-neutral-500 font-medium">
-              {(job.techs?.length ?? 0) > 1 ? "Technicians" : "Technician"}
-            </dt>
-            <dd className="text-neutral-900">{getJobTechniciansLabel(job)}</dd>
+            <LiveTechnicianLabel jobId={job.id} initial={getJobTechniciansLabel(job)} />
           </div>
           {job.completedAt && (
             <div>
